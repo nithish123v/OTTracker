@@ -1,4 +1,3 @@
-import { supabase } from "./supabase";
 import { putPatient, putSession, queueChange } from "./localDb";
 
 export async function savePatientOfflineFirst(patient) {
@@ -11,7 +10,7 @@ export async function savePatientOfflineFirst(patient) {
     category: patient.category,
     consulting_dr: patient.consultingDr,
     room_no: patient.roomNo,
-    referral_date: patient.date
+    referral_date: patient.date,
   };
   await putPatient(row);
   await queueChange({ table: "patients", operation: "upsert", payload: row });
@@ -20,15 +19,13 @@ export async function savePatientOfflineFirst(patient) {
 
 export async function saveSessionOfflineFirst({ patientId, date, record, userId = null }) {
   const row = {
-    id: `${patientId}_${date}`,
     patient_id: patientId,
     session_date: date,
     seen: record.seen,
     reason: record.reason || "",
     notes: record.notes || "",
-    created_by: userId
   };
-  await putSession(row);
+  await putSession({ ...row, id: `${patientId}_${date}` });
   await queueChange({ table: "session_records", operation: "upsert", payload: row });
   return row;
 }
