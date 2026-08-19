@@ -72,29 +72,36 @@ export default function OTTracker() {
 
   const showToast = (msg, type="success") => { setToast({ msg, type }); setTimeout(() => setToast(null), 2500); };
 
-  // ── Load persisted data on mount ──
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      let loadedPatients = null;
-      let loadedRecords = null;
-      try {
-        const p = await window.storage.get(PATIENTS_KEY);
-        if (p && p.value) loadedPatients = JSON.parse(p.value);
-      } catch (e) { /* key not found yet - first run */ }
-      try {
-        const r = await window.storage.get(RECORDS_KEY);
-        if (r && r.value) loadedRecords = JSON.parse(r.value);
-      } catch (e) { /* key not found yet - first run */ }
+ // ── Load persisted data on mount ──
+useEffect(() => {
+  try {
+    const savedPatients = localStorage.getItem(PATIENTS_KEY);
+    const savedRecords = localStorage.getItem(RECORDS_KEY);
 
-      if (cancelled) return;
-      setPatients(loadedPatients && loadedPatients.length ? loadedPatients : SAMPLE);
-      setRecords(loadedRecords || {});
-      setLoaded(true);
-      loadedOnce.current = true;
-    })();
-    return () => { cancelled = true; };
-  }, []);
+    const loadedPatients = savedPatients
+      ? JSON.parse(savedPatients)
+      : null;
+
+    const loadedRecords = savedRecords
+      ? JSON.parse(savedRecords)
+      : null;
+
+    setPatients(
+      loadedPatients && loadedPatients.length
+        ? loadedPatients
+        : SAMPLE
+    );
+
+    setRecords(loadedRecords || {});
+  } catch (e) {
+    console.error("Could not load saved data:", e);
+    setPatients(SAMPLE);
+    setRecords({});
+  }
+
+  setLoaded(true);
+  loadedOnce.current = true;
+}, []);
 
   // ── Persist patients whenever they change ──
   useEffect(() => {
@@ -102,7 +109,7 @@ export default function OTTracker() {
     (async () => {
       setSaving(true);
       try {
-        await window.storage.set(PATIENTS_KEY, JSON.stringify(patients));
+        localStorage.setItem(PATIENTS_KEY, JSON.stringify(patients));
       } catch (e) { showToast("Could not save patients", "warn"); }
       setSaving(false);
     })();
@@ -114,7 +121,7 @@ export default function OTTracker() {
     (async () => {
       setSaving(true);
       try {
-        await window.storage.set(RECORDS_KEY, JSON.stringify(records));
+        localStorage.setItem(RECORDS_KEY, JSON.stringify(records));
       } catch (e) { showToast("Could not save records", "warn"); }
       setSaving(false);
     })();
