@@ -57,6 +57,66 @@ const EMPTY_FORM = {
 };
 
 const emptyRecord = () => ({ seen: null, reason: "", notes: "" });
+const ASSESSMENT_SCALES = [
+  {
+    id: "MRS",
+    name: "Modified Rankin Scale",
+    shortName: "MRS",
+  },
+  {
+    id: "CRS",
+    name: "Coma Recovery Scale",
+    shortName: "CRS",
+  },
+  {
+    id: "FIM",
+    name: "Functional Independence Measure",
+    shortName: "FIM",
+  },
+  {
+    id: "NIHSS",
+    name: "National Institutes of Health Stroke Scale",
+    shortName: "NIHSS",
+  },
+];
+
+function recordsFromDb(rows) {
+  const result = {};
+  for (const row of rows || []) {
+    if (!result[row.session_date]) result[row.session_date] = {};
+    result[row.session_date][row.patient_id] = {
+      seen: row.seen ?? null,
+      reason: row.reason || "",
+      notes: row.notes || "",
+    };
+  }
+  return result;
+}
+
+const ASSESSMENT_SCALES = [
+  {
+    id: "MRS",
+    name: "Modified Rankin Scale",
+    shortName: "MRS",
+  },
+  {
+    id: "CRS",
+    name: "Coma Recovery Scale",
+    shortName: "CRS",
+  },
+  {
+    id: "FIM",
+    name: "Functional Independence Measure",
+    shortName: "FIM",
+  },
+  {
+    id: "NIHSS",
+    name: "National Institutes of Health Stroke Scale",
+    shortName: "NIHSS",
+  },
+];
+
+function LoginScreen() {
 
 function patientFromDb(p) {
   return {
@@ -267,6 +327,11 @@ export default function OTTracker() {
   const [view, setView] = useState("today");
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
+  
+  const [assessmentRows, setAssessmentRows] = useState([]);
+  const [assessmentScale, setAssessmentScale] = useState("");
+  const [showAssessment, setShowAssessment] = useState(false);
+  const [assessmentPatientId, setAssessmentPatientId] = useState(null);
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -276,7 +341,12 @@ export default function OTTracker() {
   const loadData = async (currentSession) => {
     setLoaded(false);
 
-    const [{ data: staff, error: staffError }, { data: patientRows, error: patientError }, { data: sessionRows, error: sessionError }] =
+    const [
+      { data: staff, error: staffError },
+      { data: patientRows, error: patientError },
+      { data: sessionRows, error: sessionError },
+      { data: assessmentData, error: assessmentError },
+    ] =
       await Promise.all([
         supabase
           .from("staff_users")
@@ -285,6 +355,10 @@ export default function OTTracker() {
           .maybeSingle(),
         supabase.from("patients").select("*").order("created_at", { ascending: false }),
         supabase.from("session_records").select("*").order("session_date", { ascending: false }),
+                supabase
+          .from("patient_assessments")
+          .select("*")
+          .order("assessment_date", { ascending: false }),
       ]);
 
     if (staffError) {
@@ -295,10 +369,12 @@ export default function OTTracker() {
     setRole(staff?.role || "viewer");
 
     if (patientError) throw patientError;
-    if (sessionError) throw sessionError;
+if (sessionError) throw sessionError;
+if (assessmentError) throw assessmentError;
 
     setPatients((patientRows || []).map(patientFromDb));
     setRecords(recordsFromDb(sessionRows || []));
+    setAssessmentRows(assessmentData || []);
     setLoaded(true);
   };
 
