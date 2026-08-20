@@ -2,6 +2,10 @@ import React, { useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import { supabase } from "./lib/supabase";
 
+/* =========================================================
+   COLORS
+========================================================= */
+
 const COLORS = {
   bg: "#f0f4f8",
   card: "#ffffff",
@@ -14,7 +18,17 @@ const COLORS = {
   border: "#e2e8f0",
 };
 
-const CATEGORIES = ["All", "TBI", "CVA", "Department", "New IOC Cases"];
+/* =========================================================
+   CATEGORIES
+========================================================= */
+
+const CATEGORIES = [
+  "All",
+  "TBI",
+  "CVA",
+  "Department",
+  "New IOC Cases",
+];
 
 const NOT_SEEN_REASONS = [
   "Patient not available",
@@ -51,15 +65,63 @@ const CAT_COLORS = {
   },
 };
 
-const today = () => new Date().toISOString().split("T")[0];
+/* =========================================================
+   ASSESSMENT SCALES
+   ONLY THESE 4 SCALES
+========================================================= */
+
+const ASSESSMENT_SCALES = [
+  {
+    id: "MRS",
+    name: "Modified Rankin Scale",
+    shortName: "MRS",
+  },
+  {
+    id: "CRS-R",
+    name: "Coma Recovery Scale – Revised",
+    shortName: "CRS-R",
+  },
+  {
+    id: "FIM",
+    name: "Functional Independence Measure",
+    shortName: "FIM",
+  },
+  {
+    id: "NIHSS",
+    name: "National Institutes of Health Stroke Scale",
+    shortName: "NIHSS",
+  },
+];
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+const today = () =>
+  new Date().toISOString().split("T")[0];
 
 const fmtDate = (d) => {
   if (!d) return "—";
 
-  return new Date(d + "T00:00:00").toLocaleDateString("en-IN", {
+  return new Date(d + "T00:00:00").toLocaleDateString(
+    "en-IN",
+    {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }
+  );
+};
+
+const fmtDateTime = (d) => {
+  if (!d) return "—";
+
+  return new Date(d).toLocaleString("en-IN", {
     day: "numeric",
     month: "short",
     year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 };
 
@@ -81,352 +143,8 @@ const emptyRecord = () => ({
 });
 
 /* =========================================================
-   ASSESSMENT SCALES
-   ========================================================= */
-
-const ASSESSMENT_SCALES = [
-  {
-    id: "MRS",
-    name: "Modified Rankin Scale",
-    shortName: "MRS",
-  },
-  {
-    id: "CRS",
-    name: "Coma Recovery Scale–Revised",
-    shortName: "CRS-R",
-  },
-  {
-    id: "FIM",
-    name: "Functional Independence Measure",
-    shortName: "FIM",
-  },
-  {
-    id: "NIHSS",
-    name: "National Institutes of Health Stroke Scale",
-    shortName: "NIHSS",
-  },
-];
-
-/* =========================================================
-   MRS
-   ========================================================= */
-
-const MRS_OPTIONS = [
-  { value: 0, label: "0 – No symptoms at all" },
-  {
-    value: 1,
-    label: "1 – No significant disability despite symptoms",
-  },
-  {
-    value: 2,
-    label: "2 – Slight disability; unable to carry out all previous activities",
-  },
-  {
-    value: 3,
-    label: "3 – Moderate disability; requiring some help",
-  },
-  {
-    value: 4,
-    label: "4 – Moderately severe disability; unable to walk or attend to bodily needs without assistance",
-  },
-  {
-    value: 5,
-    label: "5 – Severe disability; bedridden, incontinent and requiring constant care",
-  },
-  {
-    value: 6,
-    label: "6 – Dead",
-  },
-];
-
-/* =========================================================
-   CRS-R
-   ========================================================= */
-
-const CRS_ITEMS = [
-  {
-    id: "auditory",
-    title: "Auditory Function",
-    max: 4,
-    options: [
-      "No response",
-      "Auditory startle",
-      "Localization to sound",
-      "Reproducible movement to command",
-      "Consistently follows commands",
-    ],
-  },
-  {
-    id: "visual",
-    title: "Visual Function",
-    max: 5,
-    options: [
-      "No response",
-      "Visual startle",
-      "Eye movement to object",
-      "Object localization",
-      "Object recognition",
-      "Object manipulation",
-    ],
-  },
-  {
-    id: "motor",
-    title: "Motor Function",
-    max: 6,
-    options: [
-      "No response",
-      "Abnormal posturing",
-      "Withdrawal",
-      "Localization to painful stimulation",
-      "Object manipulation",
-      "Automatic motor response",
-      "Functional object use",
-    ],
-  },
-  {
-    id: "oromotor",
-    title: "Oromotor / Verbal Function",
-    max: 3,
-    options: [
-      "No response",
-      "Oral reflexive movement",
-      "Vocalization",
-      "Intelligible verbalization",
-    ],
-  },
-  {
-    id: "communication",
-    title: "Communication",
-    max: 2,
-    options: [
-      "No response",
-      "Non-functional intentional communication",
-      "Functional communication",
-    ],
-  },
-  {
-    id: "arousal",
-    title: "Arousal",
-    max: 3,
-    options: [
-      "Unarousable",
-      "Eye opening with stimulation",
-      "Eye opening without stimulation",
-      "Attention",
-    ],
-  },
-];
-
-/* =========================================================
-   FIM
-   ========================================================= */
-
-const FIM_ITEMS = [
-  "Eating",
-  "Grooming",
-  "Bathing",
-  "Dressing – Upper Body",
-  "Dressing – Lower Body",
-  "Toileting",
-  "Bladder Management",
-  "Bowel Management",
-  "Bed / Chair / Wheelchair Transfer",
-  "Toilet Transfer",
-  "Tub / Shower Transfer",
-  "Walk / Wheelchair",
-  "Stairs",
-  "Comprehension",
-  "Expression",
-  "Social Interaction",
-  "Problem Solving",
-  "Memory",
-];
-
-const FIM_OPTIONS = [
-  { value: 1, label: "1 – Total Assistance" },
-  { value: 2, label: "2 – Maximal Assistance" },
-  { value: 3, label: "3 – Moderate Assistance" },
-  { value: 4, label: "4 – Minimal Assistance" },
-  { value: 5, label: "5 – Supervision / Setup" },
-  { value: 6, label: "6 – Modified Independence" },
-  { value: 7, label: "7 – Complete Independence" },
-];
-
-/* =========================================================
-   NIHSS
-   ========================================================= */
-
-const NIHSS_ITEMS = [
-  {
-    id: "loc",
-    title: "1a. Level of Consciousness",
-    options: [
-      "0 – Alert",
-      "1 – Not alert, but arousable by minor stimulation",
-      "2 – Not alert, requires repeated stimulation",
-      "3 – Responds only with reflex motor activity",
-    ],
-  },
-  {
-    id: "locQuestions",
-    title: "1b. LOC Questions",
-    options: [
-      "0 – Answers both questions correctly",
-      "1 – Answers one question correctly",
-      "2 – Answers neither question correctly",
-    ],
-  },
-  {
-    id: "locCommands",
-    title: "1c. LOC Commands",
-    options: [
-      "0 – Performs both tasks correctly",
-      "1 – Performs one task correctly",
-      "2 – Performs neither task correctly",
-    ],
-  },
-  {
-    id: "gaze",
-    title: "2. Best Gaze",
-    options: [
-      "0 – Normal",
-      "1 – Partial gaze palsy",
-      "2 – Forced deviation or total gaze paresis",
-    ],
-  },
-  {
-    id: "visual",
-    title: "3. Visual",
-    options: [
-      "0 – No visual loss",
-      "1 – Partial hemianopia",
-      "2 – Complete hemianopia",
-      "3 – Bilateral hemianopia / blindness",
-    ],
-  },
-  {
-    id: "facial",
-    title: "4. Facial Palsy",
-    options: [
-      "0 – Normal symmetrical movement",
-      "1 – Minor paralysis",
-      "2 – Partial paralysis",
-      "3 – Complete paralysis",
-    ],
-  },
-  {
-    id: "motorLeftArm",
-    title: "5a. Motor – Left Arm",
-    options: [
-      "0 – No drift",
-      "1 – Drift",
-      "2 – Some effort against gravity",
-      "3 – No effort against gravity",
-      "4 – No movement",
-    ],
-  },
-  {
-    id: "motorRightArm",
-    title: "5b. Motor – Right Arm",
-    options: [
-      "0 – No drift",
-      "1 – Drift",
-      "2 – Some effort against gravity",
-      "3 – No effort against gravity",
-      "4 – No movement",
-    ],
-  },
-  {
-    id: "motorLeftLeg",
-    title: "6a. Motor – Left Leg",
-    options: [
-      "0 – No drift",
-      "1 – Drift",
-      "2 – Some effort against gravity",
-      "3 – No effort against gravity",
-      "4 – No movement",
-    ],
-  },
-  {
-    id: "motorRightLeg",
-    title: "6b. Motor – Right Leg",
-    options: [
-      "0 – No drift",
-      "1 – Drift",
-      "2 – Some effort against gravity",
-      "3 – No effort against gravity",
-      "4 – No movement",
-    ],
-  },
-  {
-    id: "ataxia",
-    title: "7. Limb Ataxia",
-    options: [
-      "0 – Absent",
-      "1 – Present in one limb",
-      "2 – Present in two limbs",
-    ],
-  },
-  {
-    id: "sensory",
-    title: "8. Sensory",
-    options: [
-      "0 – Normal",
-      "1 – Mild to moderate sensory loss",
-      "2 – Severe or total sensory loss",
-    ],
-  },
-  {
-    id: "language",
-    title: "9. Best Language",
-    options: [
-      "0 – No aphasia",
-      "1 – Mild to moderate aphasia",
-      "2 – Severe aphasia",
-      "3 – Mute / global aphasia",
-    ],
-  },
-  {
-    id: "dysarthria",
-    title: "10. Dysarthria",
-    options: [
-      "0 – Normal",
-      "1 – Mild to moderate dysarthria",
-      "2 – Severe dysarthria",
-    ],
-  },
-  {
-    id: "extinction",
-    title: "11. Extinction / Inattention",
-    options: [
-      "0 – No abnormality",
-      "1 – Inattention or extinction in one modality",
-      "2 – Profound hemi-inattention or extinction",
-    ],
-  },
-];
-
-/* =========================================================
-   DATABASE HELPERS
-   ========================================================= */
-
-function recordsFromDb(rows) {
-  const result = {};
-
-  for (const row of rows || []) {
-    if (!result[row.session_date]) {
-      result[row.session_date] = {};
-    }
-
-    result[row.session_date][row.patient_id] = {
-      seen: row.seen ?? null,
-      reason: row.reason || "",
-      notes: row.notes || "",
-    };
-  }
-
-  return result;
-}
+   PATIENT DB HELPERS
+========================================================= */
 
 function patientFromDb(p) {
   return {
@@ -456,9 +174,27 @@ function patientToDb(p) {
   };
 }
 
+function recordsFromDb(rows) {
+  const result = {};
+
+  for (const row of rows || []) {
+    if (!result[row.session_date]) {
+      result[row.session_date] = {};
+    }
+
+    result[row.session_date][row.patient_id] = {
+      seen: row.seen ?? null,
+      reason: row.reason || "",
+      notes: row.notes || "",
+    };
+  }
+
+  return result;
+}
+
 /* =========================================================
-   LOGIN
-   ========================================================= */
+   LOGIN SCREEN
+========================================================= */
 
 function LoginScreen() {
   const [email, setEmail] = useState("");
@@ -510,7 +246,8 @@ function LoginScreen() {
           background: "#fff",
           borderRadius: 18,
           padding: 30,
-          boxShadow: "0 10px 40px rgba(11,20,55,0.12)",
+          boxShadow:
+            "0 10px 40px rgba(11,20,55,0.12)",
           border: `1px solid ${COLORS.border}`,
         }}
       >
@@ -529,7 +266,9 @@ function LoginScreen() {
               color: COLORS.sidebar,
             }}
           >
-            <span style={{ color: COLORS.accent }}>OT</span>
+            <span style={{ color: COLORS.accent }}>
+              OT
+            </span>
             Track
           </div>
 
@@ -550,7 +289,9 @@ function LoginScreen() {
           <input
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) =>
+              setEmail(e.target.value)
+            }
             placeholder="staff email"
             style={inputStyle}
             autoComplete="email"
@@ -568,7 +309,9 @@ function LoginScreen() {
           <input
             type="password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) =>
+              setPassword(e.target.value)
+            }
             placeholder="password"
             style={inputStyle}
             autoComplete="current-password"
@@ -602,10 +345,14 @@ function LoginScreen() {
               background: COLORS.accent,
               color: "#fff",
               fontWeight: 800,
-              cursor: busy ? "wait" : "pointer",
+              cursor: busy
+                ? "wait"
+                : "pointer",
             }}
           >
-            {busy ? "Signing in…" : "Sign in"}
+            {busy
+              ? "Signing in…"
+              : "Sign in"}
           </button>
         </form>
 
@@ -618,7 +365,8 @@ function LoginScreen() {
             textAlign: "center",
           }}
         >
-          Access is controlled by your Supabase staff account.
+          Access is controlled by your Supabase
+          staff account.
         </div>
       </div>
     </div>
@@ -627,7 +375,7 @@ function LoginScreen() {
 
 /* =========================================================
    COMMON STYLES
-   ========================================================= */
+========================================================= */
 
 const labelStyle = {
   display: "block",
@@ -652,520 +400,811 @@ const inputStyle = {
 };
 
 /* =========================================================
-   ASSESSMENT MODAL
-   ========================================================= */
+   MRS
+========================================================= */
 
-function AssessmentModal({
-  patient,
-  type,
-  data,
-  setData,
-  date,
-  setDate,
-  saving,
-  onClose,
-  onSave,
-}) {
-  const scale = ASSESSMENT_SCALES.find((x) => x.id === type);
-
-  const setValue = (key, value) => {
-    setData((prev) => ({
-      ...prev,
-      [key]: value,
-    }));
-  };
-
-  const calculateScore = () => {
-    if (type === "MRS") {
-      return data.score !== undefined && data.score !== ""
-        ? Number(data.score)
-        : 0;
-    }
-
-    if (type === "CRS") {
-      return CRS_ITEMS.reduce(
-        (sum, item) => sum + Number(data[item.id] || 0),
-        0
-      );
-    }
-
-    if (type === "FIM") {
-      return FIM_ITEMS.reduce(
-        (sum, _, index) => sum + Number(data[`fim_${index}`] || 0),
-        0
-      );
-    }
-
-    if (type === "NIHSS") {
-      return NIHSS_ITEMS.reduce(
-        (sum, item) => sum + Number(data[item.id] || 0),
-        0
-      );
-    }
-
-    return 0;
-  };
-
-  const score = calculateScore();
+function MRSForm({ data, setData }) {
+  const options = [
+    {
+      value: 0,
+      text: "0 – No symptoms at all",
+    },
+    {
+      value: 1,
+      text: "1 – No significant disability despite symptoms",
+    },
+    {
+      value: 2,
+      text: "2 – Slight disability",
+    },
+    {
+      value: 3,
+      text: "3 – Moderate disability",
+    },
+    {
+      value: 4,
+      text: "4 – Moderately severe disability",
+    },
+    {
+      value: 5,
+      text: "5 – Severe disability",
+    },
+    {
+      value: 6,
+      text: "6 – Dead",
+    },
+  ];
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(11,20,55,0.65)",
-        zIndex: 10000,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 20,
-      }}
-    >
-      <div
-        style={{
-          width: "100%",
-          maxWidth: 850,
-          maxHeight: "92vh",
-          overflowY: "auto",
-          background: "#fff",
-          borderRadius: 18,
-          boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
-        }}
-      >
-        <div
-          style={{
-            position: "sticky",
-            top: 0,
-            zIndex: 2,
-            background: "#fff",
-            borderBottom: `1px solid ${COLORS.border}`,
-            padding: "18px 22px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: 15,
-          }}
-        >
-          <div>
-            <div
-              style={{
-                fontSize: 18,
-                fontWeight: 900,
-                color: COLORS.sidebar,
-              }}
-            >
-              📋 {scale?.name}
-            </div>
-
-            <div
-              style={{
-                fontSize: 12,
-                color: COLORS.muted,
-                marginTop: 3,
-              }}
-            >
-              Patient: <b>{patient?.name}</b> • IP: {patient?.ipNo}
-            </div>
-          </div>
-
-          <button
-            onClick={onClose}
-            style={{
-              border: 0,
-              background: "#f7fafc",
-              width: 34,
-              height: 34,
-              borderRadius: 9,
-              cursor: "pointer",
-              fontSize: 18,
-            }}
-          >
-            ✕
-          </button>
-        </div>
-
-        <div style={{ padding: 22 }}>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 12,
-              marginBottom: 20,
-            }}
-          >
-            <div>
-              <label style={labelStyle}>Assessment Date</label>
-
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                style={inputStyle}
-              />
-            </div>
-
-            <div
-              style={{
-                background: "#ebedff",
-                borderRadius: 10,
-                padding: "10px 15px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: COLORS.muted,
-                }}
-              >
-                TOTAL SCORE
-              </span>
-
-              <strong
-                style={{
-                  fontSize: 24,
-                  color: COLORS.accent,
-                }}
-              >
-                {score}
-              </strong>
-            </div>
-          </div>
-
-          {/* MRS */}
-
-          {type === "MRS" && (
-            <div>
-              <div
-                style={{
-                  fontWeight: 800,
-                  fontSize: 14,
-                  marginBottom: 10,
-                }}
-              >
-                Select Modified Rankin Scale Score
-              </div>
-
-              {MRS_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  onClick={() => setValue("score", option.value)}
-                  style={{
-                    width: "100%",
-                    textAlign: "left",
-                    padding: "12px 14px",
-                    marginBottom: 8,
-                    borderRadius: 9,
-                    border: `1.5px solid ${
-                      Number(data.score) === option.value
-                        ? COLORS.accent
-                        : COLORS.border
-                    }`,
-                    background:
-                      Number(data.score) === option.value
-                        ? "#ebedff"
-                        : "#fff",
-                    color: COLORS.text,
-                    fontWeight:
-                      Number(data.score) === option.value
-                        ? 800
-                        : 500,
-                    cursor: "pointer",
-                  }}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* CRS */}
-
-          {type === "CRS" && (
-            <div>
-              {CRS_ITEMS.map((item) => (
-                <div
-                  key={item.id}
-                  style={{
-                    marginBottom: 18,
-                    padding: 15,
-                    borderRadius: 12,
-                    border: `1px solid ${COLORS.border}`,
-                    background: "#fafcff",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontWeight: 800,
-                      marginBottom: 9,
-                      fontSize: 13,
-                    }}
-                  >
-                    {item.title}
-                  </div>
-
-                  <select
-                    value={data[item.id] ?? ""}
-                    onChange={(e) =>
-                      setValue(item.id, e.target.value)
-                    }
-                    style={inputStyle}
-                  >
-                    <option value="">Select score</option>
-
-                    {item.options.map((option, index) => (
-                      <option key={index} value={index}>
-                        {index} – {option}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* FIM */}
-
-          {type === "FIM" && (
-            <div>
-              <div
-                style={{
-                  padding: 12,
-                  background: "#fffbe6",
-                  borderRadius: 10,
-                  marginBottom: 15,
-                  fontSize: 12,
-                  color: COLORS.muted,
-                }}
-              >
-                Score each item from <b>1 to 7</b>. Total FIM score:
-                <b> 18–126</b>.
-              </div>
-
-              {FIM_ITEMS.map((item, index) => (
-                <div
-                  key={item}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 270px",
-                    gap: 12,
-                    alignItems: "center",
-                    padding: "10px 0",
-                    borderBottom: `1px solid ${COLORS.border}`,
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: 13,
-                      fontWeight: 700,
-                    }}
-                  >
-                    {index + 1}. {item}
-                  </div>
-
-                  <select
-                    value={data[`fim_${index}`] ?? ""}
-                    onChange={(e) =>
-                      setValue(`fim_${index}`, e.target.value)
-                    }
-                    style={inputStyle}
-                  >
-                    <option value="">Select score</option>
-
-                    {FIM_OPTIONS.map((option) => (
-                      <option
-                        key={option.value}
-                        value={option.value}
-                      >
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* NIHSS */}
-
-          {type === "NIHSS" && (
-            <div>
-              {NIHSS_ITEMS.map((item) => (
-                <div
-                  key={item.id}
-                  style={{
-                    marginBottom: 15,
-                    padding: 15,
-                    borderRadius: 12,
-                    border: `1px solid ${COLORS.border}`,
-                    background: "#fafcff",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontWeight: 800,
-                      marginBottom: 9,
-                      fontSize: 13,
-                    }}
-                  >
-                    {item.title}
-                  </div>
-
-                  <select
-                    value={data[item.id] ?? ""}
-                    onChange={(e) =>
-                      setValue(item.id, e.target.value)
-                    }
-                    style={inputStyle}
-                  >
-                    <option value="">Select score</option>
-
-                    {item.options.map((option, index) => {
-                      const scoreNumber = Number(
-                        option.split(" ")[0]
-                      );
-
-                      return (
-                        <option
-                          key={index}
-                          value={scoreNumber}
-                        >
-                          {option}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div style={{ marginTop: 18 }}>
-            <label style={labelStyle}>Assessment Notes</label>
-
-            <textarea
-              value={data.notes || ""}
-              onChange={(e) =>
-                setValue("notes", e.target.value)
-              }
-              placeholder="Clinical observations, comments, recommendations..."
-              style={{
-                ...inputStyle,
-                minHeight: 90,
-                resize: "vertical",
-              }}
-            />
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              marginTop: 20,
-              justifyContent: "flex-end",
-            }}
-          >
-            <button
-              onClick={onClose}
-              style={{
-                padding: "11px 20px",
-                borderRadius: 9,
-                border: `1px solid ${COLORS.border}`,
-                background: "#f7fafc",
-                color: COLORS.muted,
-                fontWeight: 700,
-                cursor: "pointer",
-              }}
-            >
-              Cancel
-            </button>
-
-            <button
-              onClick={onSave}
-              disabled={saving}
-              style={{
-                padding: "11px 25px",
-                borderRadius: 9,
-                border: 0,
-                background: COLORS.accent,
-                color: "#fff",
-                fontWeight: 800,
-                cursor: saving ? "wait" : "pointer",
-              }}
-            >
-              {saving ? "Saving…" : "✓ Save Assessment"}
-            </button>
-          </div>
-        </div>
+    <div>
+      <div style={scaleInfo}>
+        Modified Rankin Scale – Score 0 to 6
       </div>
+
+      {options.map((item) => (
+        <label
+          key={item.value}
+          style={radioCard(
+            Number(data.score) === item.value
+          )}
+        >
+          <input
+            type="radio"
+            name="mrs"
+            checked={
+              Number(data.score) === item.value
+            }
+            onChange={() =>
+              setData((x) => ({
+                ...x,
+                score: item.value,
+              }))
+            }
+          />
+
+          <span>
+            <strong>{item.value}</strong>{" "}
+            – {item.text}
+          </span>
+        </label>
+      ))}
     </div>
   );
 }
 
 /* =========================================================
+   CRS-R
+========================================================= */
+
+function CRSForm({ data, setData }) {
+  const sections = [
+    {
+      key: "auditory",
+      title: "Auditory Function",
+      max: 4,
+      options: [
+        "No response",
+        "Auditory startle",
+        "Localization to sound",
+        "Reproducible movement to command",
+        "Oriented response",
+      ],
+    },
+    {
+      key: "visual",
+      title: "Visual Function",
+      max: 5,
+      options: [
+        "No response",
+        "Visual startle",
+        "Localization to object",
+        "Object manipulation",
+        "Object recognition",
+        "Object localization",
+      ],
+    },
+    {
+      key: "motor",
+      title: "Motor Function",
+      max: 6,
+      options: [
+        "No response",
+        "Abnormal posturing",
+        "Flexion withdrawal",
+        "Object manipulation",
+        "Automatic motor response",
+        "Functional object use",
+        "Functional communication",
+      ],
+    },
+    {
+      key: "oromotor",
+      title: "Oromotor / Verbal Function",
+      max: 3,
+      options: [
+        "No response",
+        "Oral reflexive movement",
+        "Object-related oral movement",
+        "Intelligible verbalization",
+      ],
+    },
+    {
+      key: "communication",
+      title: "Communication",
+      max: 2,
+      options: [
+        "No communication",
+        "Non-functional intentional communication",
+        "Functional communication",
+      ],
+    },
+    {
+      key: "arousal",
+      title: "Arousal",
+      max: 3,
+      options: [
+        "Unarousable",
+        "Eye opening with stimulation",
+        "Eye opening without stimulation",
+        "Attention",
+      ],
+    },
+  ];
+
+  const total = sections.reduce(
+    (sum, section) =>
+      sum + Number(data[section.key] || 0),
+    0
+  );
+
+  return (
+    <div>
+      <div style={scaleInfo}>
+        CRS-R – Coma Recovery Scale Revised.
+        Total score: 0–23.
+      </div>
+
+      {sections.map((section) => (
+        <div
+          key={section.key}
+          style={{
+            marginBottom: 18,
+            padding: 14,
+            background: "#f8fafc",
+            borderRadius: 10,
+            border: `1px solid ${COLORS.border}`,
+          }}
+        >
+          <div
+            style={{
+              fontWeight: 800,
+              fontSize: 13,
+              marginBottom: 9,
+            }}
+          >
+            {section.title}
+          </div>
+
+          {section.options.map(
+            (option, index) => (
+              <label
+                key={index}
+                style={radioCard(
+                  Number(data[section.key]) ===
+                    index
+                )}
+              >
+                <input
+                  type="radio"
+                  name={section.key}
+                  checked={
+                    Number(
+                      data[section.key]
+                    ) === index
+                  }
+                  onChange={() =>
+                    setData((x) => ({
+                      ...x,
+                      [section.key]: index,
+                    }))
+                  }
+                />
+
+                <span>
+                  <strong>{index}</strong>{" "}
+                  – {option}
+                </span>
+              </label>
+            )
+          )}
+        </div>
+      ))}
+
+      <ScoreBox>
+        CRS-R Total Score: <strong>{total}/23</strong>
+      </ScoreBox>
+    </div>
+  );
+}
+
+/* =========================================================
+   FIM
+========================================================= */
+
+function FIMForm({ data, setData }) {
+  const items = [
+    "Eating",
+    "Grooming",
+    "Bathing",
+    "Dressing – Upper Body",
+    "Dressing – Lower Body",
+    "Toileting",
+    "Bladder Management",
+    "Bowel Management",
+    "Bed / Chair / Wheelchair Transfer",
+    "Toilet Transfer",
+    "Tub / Shower Transfer",
+    "Walk / Wheelchair",
+    "Stairs",
+    "Comprehension",
+    "Expression",
+    "Social Interaction",
+    "Problem Solving",
+    "Memory",
+  ];
+
+  const levels = [
+    "1 – Total Assistance",
+    "2 – Maximal Assistance",
+    "3 – Moderate Assistance",
+    "4 – Minimal Assistance",
+    "5 – Supervision / Setup",
+    "6 – Modified Independence",
+    "7 – Complete Independence",
+  ];
+
+  const total = items.reduce(
+    (sum, _, index) =>
+      sum +
+      Number(
+        data[`item_${index}`] || 0
+      ),
+    0
+  );
+
+  return (
+    <div>
+      <div style={scaleInfo}>
+        FIM – 18 items. Each item scored 1–7.
+        Total: 18–126.
+      </div>
+
+      {items.map((item, index) => (
+        <div
+          key={item}
+          style={{
+            marginBottom: 10,
+            padding: 12,
+            background: "#f8fafc",
+            borderRadius: 9,
+            border: `1px solid ${COLORS.border}`,
+          }}
+        >
+          <div
+            style={{
+              fontWeight: 700,
+              fontSize: 12,
+              marginBottom: 7,
+            }}
+          >
+            {index + 1}. {item}
+          </div>
+
+          <select
+            value={data[`item_${index}`] || ""}
+            onChange={(e) =>
+              setData((x) => ({
+                ...x,
+                [`item_${index}`]:
+                  e.target.value,
+              }))
+            }
+            style={inputStyle}
+          >
+            <option value="">
+              Select score
+            </option>
+
+            {levels.map((level, i) => (
+              <option
+                key={i + 1}
+                value={i + 1}
+              >
+                {level}
+              </option>
+            ))}
+          </select>
+        </div>
+      ))}
+
+      <ScoreBox>
+        FIM Total Score:{" "}
+        <strong>{total}/126</strong>
+      </ScoreBox>
+    </div>
+  );
+}
+
+/* =========================================================
+   NIHSS
+========================================================= */
+
+function NIHSSForm({ data, setData }) {
+  const items = [
+    {
+      key: "1a",
+      name: "1a. Level of Consciousness",
+      max: 3,
+      options: [
+        "0 – Alert",
+        "1 – Not alert, but arousable",
+        "2 – Not alert, requires repeated stimulation",
+        "3 – Responds only with reflex motor / autonomic effects",
+      ],
+    },
+    {
+      key: "1b",
+      name: "1b. LOC Questions",
+      max: 2,
+      options: [
+        "0 – Answers both correctly",
+        "1 – Answers one correctly",
+        "2 – Answers neither correctly",
+      ],
+    },
+    {
+      key: "1c",
+      name: "1c. LOC Commands",
+      max: 2,
+      options: [
+        "0 – Performs both tasks correctly",
+        "1 – Performs one task correctly",
+        "2 – Performs neither correctly",
+      ],
+    },
+    {
+      key: "2",
+      name: "2. Best Gaze",
+      max: 2,
+      options: [
+        "0 – Normal",
+        "1 – Partial gaze palsy",
+        "2 – Forced deviation / total gaze paresis",
+      ],
+    },
+    {
+      key: "3",
+      name: "3. Visual",
+      max: 3,
+      options: [
+        "0 – No visual loss",
+        "1 – Partial hemianopia",
+        "2 – Complete hemianopia",
+        "3 – Bilateral hemianopia / blindness",
+      ],
+    },
+    {
+      key: "4",
+      name: "4. Facial Palsy",
+      max: 3,
+      options: [
+        "0 – Normal",
+        "1 – Minor paralysis",
+        "2 – Partial paralysis",
+        "3 – Complete paralysis",
+      ],
+    },
+    {
+      key: "5a",
+      name: "5a. Left Arm",
+      max: 4,
+      options: [
+        "0 – No drift",
+        "1 – Drift",
+        "2 – Some effort against gravity",
+        "3 – No effort against gravity",
+        "4 – No movement",
+      ],
+    },
+    {
+      key: "5b",
+      name: "5b. Right Arm",
+      max: 4,
+      options: [
+        "0 – No drift",
+        "1 – Drift",
+        "2 – Some effort against gravity",
+        "3 – No effort against gravity",
+        "4 – No movement",
+      ],
+    },
+    {
+      key: "6a",
+      name: "6a. Left Leg",
+      max: 4,
+      options: [
+        "0 – No drift",
+        "1 – Drift",
+        "2 – Some effort against gravity",
+        "3 – No effort against gravity",
+        "4 – No movement",
+      ],
+    },
+    {
+      key: "6b",
+      name: "6b. Right Leg",
+      max: 4,
+      options: [
+        "0 – No drift",
+        "1 – Drift",
+        "2 – Some effort against gravity",
+        "3 – No effort against gravity",
+        "4 – No movement",
+      ],
+    },
+    {
+      key: "7",
+      name: "7. Limb Ataxia",
+      max: 2,
+      options: [
+        "0 – Absent",
+        "1 – Present in one limb",
+        "2 – Present in two limbs",
+      ],
+    },
+    {
+      key: "8",
+      name: "8. Sensory",
+      max: 2,
+      options: [
+        "0 – Normal",
+        "1 – Mild to moderate sensory loss",
+        "2 – Severe / total sensory loss",
+      ],
+    },
+    {
+      key: "9",
+      name: "9. Best Language",
+      max: 3,
+      options: [
+        "0 – No aphasia",
+        "1 – Mild to moderate aphasia",
+        "2 – Severe aphasia",
+        "3 – Mute / global aphasia",
+      ],
+    },
+    {
+      key: "10",
+      name: "10. Dysarthria",
+      max: 2,
+      options: [
+        "0 – Normal",
+        "1 – Mild to moderate dysarthria",
+        "2 – Severe dysarthria / unintelligible",
+      ],
+    },
+    {
+      key: "11",
+      name: "11. Extinction / Inattention",
+      max: 2,
+      options: [
+        "0 – No abnormality",
+        "1 – Inattention in one modality",
+        "2 – Profound hemi-inattention",
+      ],
+    },
+  ];
+
+  const total = items.reduce(
+    (sum, item) =>
+      sum +
+      Number(data[item.key] || 0),
+    0
+  );
+
+  return (
+    <div>
+      <div style={scaleInfo}>
+        NIHSS – National Institutes of Health
+        Stroke Scale. Total: 0–42.
+      </div>
+
+      {items.map((item) => (
+        <div
+          key={item.key}
+          style={{
+            marginBottom: 12,
+            padding: 12,
+            background: "#f8fafc",
+            borderRadius: 9,
+            border: `1px solid ${COLORS.border}`,
+          }}
+        >
+          <div
+            style={{
+              fontWeight: 800,
+              fontSize: 12,
+              marginBottom: 7,
+            }}
+          >
+            {item.name}
+          </div>
+
+          <select
+            value={data[item.key] ?? ""}
+            onChange={(e) =>
+              setData((x) => ({
+                ...x,
+                [item.key]:
+                  e.target.value,
+              }))
+            }
+            style={inputStyle}
+          >
+            <option value="">
+              Select score
+            </option>
+
+            {item.options.map(
+              (option, index) => (
+                <option
+                  key={index}
+                  value={index}
+                >
+                  {option}
+                </option>
+              )
+            )}
+          </select>
+        </div>
+      ))}
+
+      <ScoreBox>
+        NIHSS Total Score:{" "}
+        <strong>{total}/42</strong>
+      </ScoreBox>
+    </div>
+  );
+}
+
+/* =========================================================
+   ASSESSMENT FORM
+========================================================= */
+
+const scaleInfo = {
+  padding: 12,
+  marginBottom: 16,
+  borderRadius: 10,
+  background: "#ebedff",
+  color: "#4e6ef2",
+  fontSize: 12,
+  fontWeight: 700,
+};
+
+const radioCard = (active) => ({
+  display: "flex",
+  alignItems: "center",
+  gap: 9,
+  padding: "9px 11px",
+  marginBottom: 6,
+  borderRadius: 8,
+  border: `1px solid ${
+    active
+      ? "#4e6ef2"
+      : COLORS.border
+  }`,
+  background: active
+    ? "#ebedff"
+    : "#fff",
+  cursor: "pointer",
+  fontSize: 12,
+});
+
+function ScoreBox({ children }) {
+  return (
+    <div
+      style={{
+        marginTop: 15,
+        padding: 14,
+        borderRadius: 10,
+        background: "#e6faf7",
+        border: "1px solid #00c9a744",
+        color: "#087f6c",
+        fontSize: 15,
+        fontWeight: 800,
+        textAlign: "center",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function AssessmentForm({
+  type,
+  data,
+  setData,
+}) {
+  if (type === "MRS") {
+    return (
+      <MRSForm
+        data={data}
+        setData={setData}
+      />
+    );
+  }
+
+  if (type === "CRS-R") {
+    return (
+      <CRSForm
+        data={data}
+        setData={setData}
+      />
+    );
+  }
+
+  if (type === "FIM") {
+    return (
+      <FIMForm
+        data={data}
+        setData={setData}
+      />
+    );
+  }
+
+  if (type === "NIHSS") {
+    return (
+      <NIHSSForm
+        data={data}
+        setData={setData}
+      />
+    );
+  }
+
+  return null;
+}
+
+/* =========================================================
    MAIN APP
-   ========================================================= */
+========================================================= */
 
 export default function OTTracker() {
-  const [session, setSession] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [authorized, setAuthorized] = useState(false);
-  const [role, setRole] = useState("staff");
+  const [session, setSession] =
+    useState(null);
 
-  const [patients, setPatients] = useState([]);
-  const [activeTab, setActiveTab] = useState("All");
-  const [sessionDate, setSessionDate] = useState(today());
-  const [records, setRecords] = useState({});
+  const [authLoading, setAuthLoading] =
+    useState(true);
 
-  const [showAdd, setShowAdd] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [authorized, setAuthorized] =
+    useState(false);
 
-  const [expandedId, setExpandedId] = useState(null);
-  const [search, setSearch] = useState("");
-  const [toast, setToast] = useState(null);
-  const [view, setView] = useState("today");
-  const [loaded, setLoaded] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [role, setRole] =
+    useState("staff");
 
-  const [showAssessment, setShowAssessment] = useState(false);
-  const [assessmentPatient, setAssessmentPatient] = useState(null);
-  const [assessmentType, setAssessmentType] = useState("");
-  const [assessmentData, setAssessmentData] = useState({});
-  const [assessmentDate, setAssessmentDate] = useState(today());
-  const [assessmentRows, setAssessmentRows] = useState([]);
+  const [patients, setPatients] =
+    useState([]);
 
-  const showToast = (msg, type = "success") => {
+  const [activeTab, setActiveTab] =
+    useState("All");
+
+  const [sessionDate, setSessionDate] =
+    useState(today());
+
+  const [records, setRecords] =
+    useState({});
+
+  const [showAdd, setShowAdd] =
+    useState(false);
+
+  const [editingId, setEditingId] =
+    useState(null);
+
+  const [form, setForm] =
+    useState(EMPTY_FORM);
+
+  const [expandedId, setExpandedId] =
+    useState(null);
+
+  const [search, setSearch] =
+    useState("");
+
+  const [toast, setToast] =
+    useState(null);
+
+  const [view, setView] =
+    useState("today");
+
+  const [loaded, setLoaded] =
+    useState(false);
+
+  const [saving, setSaving] =
+    useState(false);
+
+  /* =====================================================
+     ASSESSMENT STATE
+  ===================================================== */
+
+  const [
+    showAssessment,
+    setShowAssessment,
+  ] = useState(false);
+
+  const [
+    assessmentPatient,
+    setAssessmentPatient,
+  ] = useState(null);
+
+  const [
+    assessmentType,
+    setAssessmentType,
+  ] = useState("");
+
+  const [
+    assessmentData,
+    setAssessmentData,
+  ] = useState({});
+
+  const [
+    assessmentDate,
+    setAssessmentDate,
+  ] = useState(today());
+
+  const [
+    assessmentRows,
+    setAssessmentRows,
+  ] = useState([]);
+
+  /* =====================================================
+     TOAST
+  ===================================================== */
+
+  const showToast = (
+    msg,
+    type = "success"
+  ) => {
     setToast({
       msg,
       type,
     });
 
-    setTimeout(() => {
-      setToast(null);
-    }, 2500);
+    setTimeout(
+      () => setToast(null),
+      2500
+    );
   };
 
-  /* =========================================================
-     LOAD DATABASE
-     ========================================================= */
+  /* =====================================================
+     LOAD DATA
+  ===================================================== */
 
-  const loadData = async (currentSession) => {
+  const loadData = async (
+    currentSession
+  ) => {
     setLoaded(false);
 
     const [
-      { data: staff, error: staffError },
-      { data: patientRows, error: patientError },
-      { data: sessionRows, error: sessionError },
-      { data: assessmentDataRows, error: assessmentError },
+      staffResult,
+      patientResult,
+      sessionResult,
+      assessmentResult,
     ] = await Promise.all([
       supabase
         .from("staff_users")
         .select("role, active")
-        .eq("user_id", currentSession.user.id)
+        .eq(
+          "user_id",
+          currentSession.user.id
+        )
         .maybeSingle(),
 
       supabase
@@ -1190,6 +1229,26 @@ export default function OTTracker() {
         }),
     ]);
 
+    const {
+      data: staff,
+      error: staffError,
+    } = staffResult;
+
+    const {
+      data: patientRows,
+      error: patientError,
+    } = patientResult;
+
+    const {
+      data: sessionRows,
+      error: sessionError,
+    } = sessionResult;
+
+    const {
+      data: assessmentRowsFromDb,
+      error: assessmentError,
+    } = assessmentResult;
+
     if (staffError) {
       console.error(staffError);
       throw new Error(
@@ -1197,59 +1256,81 @@ export default function OTTracker() {
       );
     }
 
-    setAuthorized(Boolean(staff?.active));
-    setRole(staff?.role || "viewer");
+    setAuthorized(
+      Boolean(staff?.active)
+    );
 
-    if (patientError) throw patientError;
-    if (sessionError) throw sessionError;
-    if (assessmentError) throw assessmentError;
+    setRole(
+      staff?.role || "viewer"
+    );
+
+    if (patientError)
+      throw patientError;
+
+    if (sessionError)
+      throw sessionError;
+
+    if (assessmentError)
+      throw assessmentError;
 
     setPatients(
-      (patientRows || []).map(patientFromDb)
+      (patientRows || []).map(
+        patientFromDb
+      )
     );
 
     setRecords(
-      recordsFromDb(sessionRows || [])
+      recordsFromDb(
+        sessionRows || []
+      )
     );
 
     setAssessmentRows(
-      assessmentDataRows || []
+      assessmentRowsFromDb || []
     );
 
     setLoaded(true);
   };
 
-  /* =========================================================
+  /* =====================================================
      AUTH
-     ========================================================= */
+  ===================================================== */
 
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!mounted) return;
 
-      setSession(data.session || null);
-      setAuthLoading(false);
-    });
+        setSession(
+          data.session || null
+        );
+
+        setAuthLoading(false);
+      });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(
-      (_event, nextSession) => {
-        if (!mounted) return;
+    } =
+      supabase.auth.onAuthStateChange(
+        (_event, nextSession) => {
+          if (!mounted) return;
 
-        setSession(nextSession || null);
+          setSession(
+            nextSession || null
+          );
 
-        if (!nextSession) {
-          setAuthorized(false);
-          setPatients([]);
-          setRecords({});
-          setAssessmentRows([]);
-          setLoaded(false);
+          if (!nextSession) {
+            setAuthorized(false);
+            setPatients([]);
+            setRecords({});
+            setAssessmentRows([]);
+            setLoaded(false);
+          }
         }
-      }
-    );
+      );
 
     return () => {
       mounted = false;
@@ -1285,11 +1366,14 @@ export default function OTTracker() {
     };
   }, [session]);
 
-  /* =========================================================
-     ASSESSMENTS
-     ========================================================= */
+  /* =====================================================
+     ASSESSMENT FUNCTIONS
+  ===================================================== */
 
-  const openAssessment = (patient, type) => {
+  const openAssessment = (
+    patient,
+    type
+  ) => {
     setAssessmentPatient(patient);
     setAssessmentType(type);
     setAssessmentDate(sessionDate);
@@ -1304,91 +1388,221 @@ export default function OTTracker() {
     setAssessmentData({});
   };
 
+  const calculateAssessmentTotal = (
+    type,
+    data
+  ) => {
+    if (type === "MRS") {
+      return data.score !== undefined &&
+        data.score !== ""
+        ? Number(data.score)
+        : null;
+    }
+
+    if (type === "CRS-R") {
+      return [
+        "auditory",
+        "visual",
+        "motor",
+        "oromotor",
+        "communication",
+        "arousal",
+      ].reduce(
+        (sum, key) =>
+          sum + Number(data[key] || 0),
+        0
+      );
+    }
+
+    if (type === "FIM") {
+      return Array.from(
+        { length: 18 },
+        (_, i) =>
+          Number(
+            data[`item_${i}`] || 0
+          )
+      ).reduce(
+        (sum, value) => sum + value,
+        0
+      );
+    }
+
+    if (type === "NIHSS") {
+      const keys = [
+        "1a",
+        "1b",
+        "1c",
+        "2",
+        "3",
+        "4",
+        "5a",
+        "5b",
+        "6a",
+        "6b",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+      ];
+
+      return keys.reduce(
+        (sum, key) =>
+          sum + Number(data[key] || 0),
+        0
+      );
+    }
+
+    return null;
+  };
+
+  const validateAssessment = () => {
+    if (assessmentType === "MRS") {
+      return (
+        assessmentData.score !==
+          undefined &&
+        assessmentData.score !== ""
+      );
+    }
+
+    if (assessmentType === "CRS-R") {
+      const keys = [
+        "auditory",
+        "visual",
+        "motor",
+        "oromotor",
+        "communication",
+        "arousal",
+      ];
+
+      return keys.every(
+        (key) =>
+          assessmentData[key] !==
+            undefined &&
+          assessmentData[key] !== ""
+      );
+    }
+
+    if (assessmentType === "FIM") {
+      return Array.from(
+        { length: 18 },
+        (_, i) =>
+          assessmentData[
+            `item_${i}`
+          ] !== undefined &&
+          assessmentData[
+            `item_${i}`
+          ] !== ""
+      ).every(Boolean);
+    }
+
+    if (assessmentType === "NIHSS") {
+      const keys = [
+        "1a",
+        "1b",
+        "1c",
+        "2",
+        "3",
+        "4",
+        "5a",
+        "5b",
+        "6a",
+        "6b",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+      ];
+
+      return keys.every(
+        (key) =>
+          assessmentData[key] !==
+            undefined &&
+          assessmentData[key] !== ""
+      );
+    }
+
+    return false;
+  };
+
   const saveAssessment = async () => {
-    if (!assessmentPatient || !assessmentType) {
+    if (
+      !assessmentPatient ||
+      !assessmentType
+    ) {
+      return;
+    }
+
+    if (!validateAssessment()) {
+      showToast(
+        "Please complete all items of the assessment.",
+        "warn"
+      );
       return;
     }
 
     setSaving(true);
 
     try {
-      let totalScore = null;
-
-      if (assessmentType === "MRS") {
-        if (
-          assessmentData.score === undefined ||
-          assessmentData.score === ""
-        ) {
-          showToast(
-            "Please select an MRS score.",
-            "warn"
-          );
-
-          setSaving(false);
-          return;
-        }
-
-        totalScore = Number(
-          assessmentData.score
+      const totalScore =
+        calculateAssessmentTotal(
+          assessmentType,
+          assessmentData
         );
-      }
 
-      if (assessmentType === "CRS") {
-        totalScore = CRS_ITEMS.reduce(
-          (sum, item) =>
-            sum +
-            Number(
-              assessmentData[item.id] || 0
-            ),
-          0
-        );
-      }
-
-      if (assessmentType === "FIM") {
-        totalScore = FIM_ITEMS.reduce(
-          (sum, _, index) =>
-            sum +
-            Number(
-              assessmentData[`fim_${index}`] ||
-                0
-            ),
-          0
-        );
-      }
-
-      if (assessmentType === "NIHSS") {
-        totalScore = NIHSS_ITEMS.reduce(
-          (sum, item) =>
-            sum +
-            Number(
-              assessmentData[item.id] || 0
-            ),
-          0
-        );
-      }
+      /*
+       IMPORTANT:
+       entered_by = Supabase Auth user ID
+       entered_by_email = logged-in staff email
+      */
 
       const payload = {
-        patient_id: assessmentPatient.id,
-        assessment_type: assessmentType,
-        assessment_date: assessmentDate,
-        total_score: totalScore,
-        scores: assessmentData,
+        patient_id:
+          assessmentPatient.id,
+
+        assessment_type:
+          assessmentType,
+
+        assessment_date:
+          assessmentDate,
+
+        total_score:
+          totalScore,
+
+        scores:
+          assessmentData,
+
         notes:
-          assessmentData.notes || null,
+          assessmentData.notes ||
+          null,
+
+        entered_by:
+          session.user.id,
+
+        entered_by_email:
+          session.user.email || "",
       };
 
-      const { data, error } = await supabase
+      const {
+        data,
+        error,
+      } = await supabase
         .from("patient_assessments")
         .insert(payload)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
-      setAssessmentRows((prev) => [
-        data,
-        ...prev,
-      ]);
+      setAssessmentRows(
+        (prev) => [
+          data,
+          ...prev,
+        ]
+      );
 
       showToast(
         `${assessmentType} assessment saved successfully!`
@@ -1408,21 +1622,70 @@ export default function OTTracker() {
     }
   };
 
-  /* =========================================================
+  /* =====================================================
+     ASSESSMENT HISTORY
+  ===================================================== */
+
+  const patientAssessments =
+    useMemo(() => {
+      if (!assessmentPatient)
+        return [];
+
+      return assessmentRows
+        .filter(
+          (row) =>
+            row.patient_id ===
+            assessmentPatient.id
+        )
+        .sort(
+          (a, b) =>
+            new Date(
+              b.assessment_date
+            ) -
+            new Date(
+              a.assessment_date
+            )
+        );
+    }, [
+      assessmentRows,
+      assessmentPatient,
+    ]);
+
+  const assessmentsForPatient = (
+    patientId
+  ) =>
+    assessmentRows
+      .filter(
+        (row) =>
+          row.patient_id ===
+          patientId
+      )
+      .sort(
+        (a, b) =>
+          new Date(
+            b.assessment_date
+          ) -
+          new Date(
+            a.assessment_date
+          )
+      );
+
+  /* =====================================================
      SIGN OUT
-     ========================================================= */
+  ===================================================== */
 
   const signOut = async () => {
     await supabase.auth.signOut();
   };
 
-  /* =========================================================
+  /* =====================================================
      SESSION RECORDS
-     ========================================================= */
+  ===================================================== */
 
   const getRecord = (pid) =>
-    (records[sessionDate] || {})[pid] ||
-    emptyRecord();
+    (records[sessionDate] || {})[
+      pid
+    ] || emptyRecord();
 
   const saveSessionRecord = async (
     patientId,
@@ -1433,22 +1696,30 @@ export default function OTTracker() {
       patient_id: patientId,
       session_date: date,
       seen: record.seen,
-      reason: record.reason || null,
-      notes: record.notes || null,
+      reason:
+        record.reason || null,
+      notes:
+        record.notes || null,
     };
 
-    const { error } = await supabase
-      .from("session_records")
-      .upsert(payload, {
-        onConflict:
-          "patient_id,session_date",
-      });
+    const { error } =
+      await supabase
+        .from("session_records")
+        .upsert(payload, {
+          onConflict:
+            "patient_id,session_date",
+        });
 
-    if (error) throw error;
+    if (error)
+      throw error;
   };
 
-  const setRecord = (pid, patch) => {
-    const previous = getRecord(pid);
+  const setRecord = (
+    pid,
+    patch
+  ) => {
+    const previous =
+      getRecord(pid);
 
     const next = {
       ...previous,
@@ -1457,6 +1728,7 @@ export default function OTTracker() {
 
     setRecords((prev) => ({
       ...prev,
+
       [sessionDate]: {
         ...(prev[sessionDate] || {}),
         [pid]: next,
@@ -1470,9 +1742,12 @@ export default function OTTracker() {
       sessionDate,
       next
     )
-      .then(() => setSaving(false))
+      .then(() =>
+        setSaving(false)
+      )
       .catch((error) => {
         console.error(error);
+
         setSaving(false);
 
         showToast(
@@ -1489,19 +1764,24 @@ export default function OTTracker() {
       reason: "",
     });
 
-    showToast("Marked as Seen ✓");
+    showToast(
+      "Marked as Seen ✓"
+    );
   };
 
-  const markNotSeen = (pid, reason) => {
+  const markNotSeen = (
+    pid,
+    reason
+  ) => {
     setRecord(pid, {
       seen: false,
       reason,
     });
   };
 
-  /* =========================================================
+  /* =====================================================
      PATIENT FORM
-     ========================================================= */
+  ===================================================== */
 
   const openAddForm = () => {
     setEditingId(null);
@@ -1523,7 +1803,8 @@ export default function OTTracker() {
       regNo: p.regNo,
       diagnosis: p.diagnosis,
       category: p.category,
-      consultingDr: p.consultingDr,
+      consultingDr:
+        p.consultingDr,
       roomNo: p.roomNo,
       date: p.date,
     });
@@ -1535,7 +1816,6 @@ export default function OTTracker() {
   const closeForm = () => {
     setShowAdd(false);
     setEditingId(null);
-
     setForm({
       ...EMPTY_FORM,
       date: today(),
@@ -1560,20 +1840,27 @@ export default function OTTracker() {
 
     try {
       if (editingId) {
-        const row = patientToDb({
-          ...form,
-          id: editingId,
-        });
+        const row =
+          patientToDb({
+            ...form,
+            id: editingId,
+          });
 
-        const { data, error } =
-          await supabase
-            .from("patients")
-            .update(row)
-            .eq("id", editingId)
-            .select()
-            .single();
+        const {
+          data,
+          error,
+        } = await supabase
+          .from("patients")
+          .update(row)
+          .eq(
+            "id",
+            editingId
+          )
+          .select()
+          .single();
 
-        if (error) throw error;
+        if (error)
+          throw error;
 
         setPatients((p) =>
           p.map((x) =>
@@ -1583,28 +1870,36 @@ export default function OTTracker() {
           )
         );
 
-        showToast("Patient updated!");
+        showToast(
+          "Patient updated!"
+        );
       } else {
-        const row = patientToDb({
-          ...form,
-          id: crypto.randomUUID(),
-        });
+        const row =
+          patientToDb({
+            ...form,
+            id: crypto.randomUUID(),
+          });
 
-        const { data, error } =
-          await supabase
-            .from("patients")
-            .insert(row)
-            .select()
-            .single();
+        const {
+          data,
+          error,
+        } = await supabase
+          .from("patients")
+          .insert(row)
+          .select()
+          .single();
 
-        if (error) throw error;
+        if (error)
+          throw error;
 
         setPatients((p) => [
           patientFromDb(data),
           ...p,
         ]);
 
-        showToast("Patient added!");
+        showToast(
+          "Patient added!"
+        );
       }
 
       closeForm();
@@ -1621,7 +1916,9 @@ export default function OTTracker() {
     }
   };
 
-  const removePatient = async (id) => {
+  const removePatient = async (
+    id
+  ) => {
     if (
       !window.confirm(
         "Remove this patient and their session records?"
@@ -1633,31 +1930,44 @@ export default function OTTracker() {
     setSaving(true);
 
     try {
-      const { error } = await supabase
-        .from("patients")
-        .delete()
-        .eq("id", id);
+      const { error } =
+        await supabase
+          .from("patients")
+          .delete()
+          .eq("id", id);
 
-      if (error) throw error;
+      if (error)
+        throw error;
 
       setPatients((p) =>
-        p.filter((x) => x.id !== id)
+        p.filter(
+          (x) => x.id !== id
+        )
       );
 
       setRecords((prev) => {
         const next = {};
 
-        Object.keys(prev).forEach((d) => {
-          const {
-            [id]: _drop,
-            ...rest
-          } = prev[d];
+        Object.keys(prev).forEach(
+          (d) => {
+            const {
+              [id]: _drop,
+              ...rest
+            } = prev[d];
 
-          next[d] = rest;
-        });
+            next[d] = rest;
+          }
+        );
 
         return next;
       });
+
+      setAssessmentRows((prev) =>
+        prev.filter(
+          (x) =>
+            x.patient_id !== id
+        )
+      );
 
       setExpandedId(null);
 
@@ -1678,9 +1988,9 @@ export default function OTTracker() {
     }
   };
 
-  /* =========================================================
-     EXCEL
-     ========================================================= */
+  /* =====================================================
+     EXPORT
+  ===================================================== */
 
   const buildRows = () => {
     const rows = [
@@ -1703,7 +2013,9 @@ export default function OTTracker() {
       .forEach((d) => {
         patients.forEach((p) => {
           const r =
-            (records[d] || {})[p.id];
+            (records[d] || {})[
+              p.id
+            ];
 
           if (r) {
             rows.push([
@@ -1732,26 +2044,16 @@ export default function OTTracker() {
   };
 
   const exportExcel = () => {
-    const rows = buildRows();
+    const rows =
+      buildRows();
 
     const wb =
       XLSX.utils.book_new();
 
     const ws =
-      XLSX.utils.aoa_to_sheet(rows);
-
-    ws["!cols"] = [
-      { wch: 12 },
-      { wch: 12 },
-      { wch: 10 },
-      { wch: 18 },
-      { wch: 14 },
-      { wch: 28 },
-      { wch: 14 },
-      { wch: 9 },
-      { wch: 10 },
-      { wch: 30 },
-    ];
+      XLSX.utils.aoa_to_sheet(
+        rows
+      );
 
     XLSX.utils.book_append_sheet(
       wb,
@@ -1796,8 +2098,6 @@ export default function OTTracker() {
       "Patient List"
     );
 
-    /* Assessment sheet */
-
     const assessmentExport = [
       [
         "Assessment Date",
@@ -1805,24 +2105,31 @@ export default function OTTracker() {
         "IP No",
         "Assessment",
         "Total Score",
-        "Notes",
+        "Entered By",
       ],
     ];
 
-    assessmentRows.forEach((a) => {
-      const patient = patients.find(
-        (p) => p.id === a.patient_id
-      );
+    assessmentRows.forEach(
+      (a) => {
+        const patient =
+          patients.find(
+            (p) =>
+              p.id ===
+              a.patient_id
+          );
 
-      assessmentExport.push([
-        a.assessment_date,
-        patient?.name || "",
-        patient?.ipNo || "",
-        a.assessment_type,
-        a.total_score,
-        a.notes || "",
-      ]);
-    });
+        assessmentExport.push([
+          a.assessment_date,
+          patient?.name || "",
+          patient?.ipNo || "",
+          a.assessment_type,
+          a.total_score,
+          a.entered_by_email ||
+            a.entered_by ||
+            "",
+        ]);
+      }
+    );
 
     const ws3 =
       XLSX.utils.aoa_to_sheet(
@@ -1845,73 +2152,85 @@ export default function OTTracker() {
     );
   };
 
-  /* =========================================================
+  /* =====================================================
      FILTER
-     ========================================================= */
+  ===================================================== */
 
-  const filtered = useMemo(() => {
-    return patients.filter((p) => {
-      const catMatch =
-        activeTab === "All" ||
-        p.category === activeTab;
+  const filtered =
+    useMemo(() => {
+      return patients.filter(
+        (p) => {
+          const catMatch =
+            activeTab === "All" ||
+            p.category ===
+              activeTab;
 
-      const q =
-        search.toLowerCase();
+          const q =
+            search.toLowerCase();
 
-      const srch =
-        !q ||
-        [
-          p.name,
-          p.ipNo,
-          p.regNo,
-          p.diagnosis,
-          p.consultingDr,
-          p.roomNo,
-        ].some((f) =>
-          (f || "")
-            .toLowerCase()
-            .includes(q)
-        );
+          const srch =
+            !q ||
+            [
+              p.name,
+              p.ipNo,
+              p.regNo,
+              p.diagnosis,
+              p.consultingDr,
+              p.roomNo,
+            ].some((f) =>
+              (f || "")
+                .toLowerCase()
+                .includes(q)
+            );
 
-      return catMatch && srch;
-    });
-  }, [
-    patients,
-    activeTab,
-    search,
-  ]);
+          return (
+            catMatch && srch
+          );
+        }
+      );
+    }, [
+      patients,
+      activeTab,
+      search,
+    ]);
 
   const todayRecs =
-    records[sessionDate] || {};
+    records[sessionDate] ||
+    {};
 
-  const seen = patients.filter(
-    (p) =>
-      todayRecs[p.id]?.seen === true
-  ).length;
+  const seen =
+    patients.filter(
+      (p) =>
+        todayRecs[p.id]
+          ?.seen === true
+    ).length;
 
-  const notSeen = patients.filter(
-    (p) =>
-      todayRecs[p.id]?.seen === false
-  ).length;
+  const notSeen =
+    patients.filter(
+      (p) =>
+        todayRecs[p.id]
+          ?.seen === false
+    ).length;
 
   const pending =
     patients.length -
     seen -
     notSeen;
 
-  const allDates = Object.keys(records)
-    .filter(
-      (d) =>
-        Object.keys(
-          records[d] || {}
-        ).length > 0
-    )
-    .sort()
-    .reverse();
+  const allDates =
+    Object.keys(records)
+      .filter(
+        (d) =>
+          Object.keys(
+            records[d] || {}
+          ).length > 0
+      )
+      .sort()
+      .reverse();
 
-  /* =========================================================
+  /* =====================================================
      LOADING
-     ========================================================= */
+  ===================================================== */
 
   if (authLoading) {
     return (
@@ -1930,9 +2249,8 @@ export default function OTTracker() {
     );
   }
 
-  if (!session) {
+  if (!session)
     return <LoginScreen />;
-  }
 
   if (!loaded) {
     return (
@@ -1944,8 +2262,6 @@ export default function OTTracker() {
           justifyContent: "center",
           background: COLORS.bg,
           color: COLORS.muted,
-          fontFamily:
-            "'DM Sans','Segoe UI',sans-serif",
         }}
       >
         Loading your OT records…
@@ -1953,9 +2269,9 @@ export default function OTTracker() {
     );
   }
 
-  /* =========================================================
-     UI
-     ========================================================= */
+  /* =====================================================
+     APP
+  ===================================================== */
 
   return (
     <div
@@ -1977,22 +2293,22 @@ export default function OTTracker() {
         @keyframes fadeUp {
           from {
             opacity: 0;
-            transform: translateY(10px);
+            transform: translateY(10px)
           }
           to {
             opacity: 1;
-            transform: translateY(0);
+            transform: translateY(0)
           }
         }
 
         @keyframes popIn {
           from {
             opacity: 0;
-            transform: scale(0.97);
+            transform: scale(0.97)
           }
           to {
             opacity: 1;
-            transform: scale(1);
+            transform: scale(1)
           }
         }
 
@@ -2029,19 +2345,11 @@ export default function OTTracker() {
           background: #cbd5e0;
           border-radius: 99px;
         }
-
-        @media (max-width: 700px) {
-          .ot-sidebar {
-            width: 70px !important;
-          }
-
-          .ot-sidebar-label {
-            display: none;
-          }
-        }
       `}</style>
 
-      {/* TOAST */}
+      {/* =================================================
+          TOAST
+      ================================================= */}
 
       {toast && (
         <div
@@ -2049,27 +2357,30 @@ export default function OTTracker() {
             position: "fixed",
             top: 18,
             right: 18,
-            zIndex: 9999,
+            zIndex: 99999,
             background:
               toast.type === "warn"
                 ? "#e63757"
                 : "#00c9a7",
             color: "#fff",
-            padding: "11px 22px",
+            padding:
+              "11px 22px",
             borderRadius: 12,
             fontWeight: 700,
             fontSize: 13,
             boxShadow:
               "0 8px 30px rgba(0,0,0,0.18)",
             animation:
-              "fadeUp 0.25s ease",
+              "fadeUp .25s ease",
           }}
         >
           {toast.msg}
         </div>
       )}
 
-      {/* SAVING */}
+      {/* =================================================
+          SAVING
+      ================================================= */}
 
       {saving && (
         <div
@@ -2090,35 +2401,21 @@ export default function OTTracker() {
         </div>
       )}
 
-      {/* ASSESSMENT MODAL */}
-
-      {showAssessment && (
-        <AssessmentModal
-          patient={assessmentPatient}
-          type={assessmentType}
-          data={assessmentData}
-          setData={setAssessmentData}
-          date={assessmentDate}
-          setDate={setAssessmentDate}
-          saving={saving}
-          onClose={closeAssessment}
-          onSave={saveAssessment}
-        />
-      )}
-
       <div
         style={{
           display: "flex",
           minHeight: "100vh",
         }}
       >
-        {/* SIDEBAR */}
+        {/* =================================================
+            SIDEBAR
+        ================================================= */}
 
         <div
-          className="ot-sidebar"
           style={{
             width: 210,
-            background: COLORS.sidebar,
+            background:
+              COLORS.sidebar,
             display: "flex",
             flexDirection: "column",
             flexShrink: 0,
@@ -2127,7 +2424,8 @@ export default function OTTracker() {
         >
           <div
             style={{
-              padding: "0 18px 24px",
+              padding:
+                "0 18px 24px",
             }}
           >
             <div
@@ -2135,7 +2433,6 @@ export default function OTTracker() {
                 fontSize: 18,
                 fontWeight: 900,
                 color: "#fff",
-                letterSpacing: -0.5,
               }}
             >
               🧠{" "}
@@ -2150,7 +2447,6 @@ export default function OTTracker() {
             </div>
 
             <div
-              className="ot-sidebar-label"
               style={{
                 fontSize: 10,
                 color: "#4a5568",
@@ -2184,7 +2480,8 @@ export default function OTTracker() {
               }
               style={{
                 display: "flex",
-                alignItems: "center",
+                alignItems:
+                  "center",
                 gap: 10,
                 width: "100%",
                 border: 0,
@@ -2196,32 +2493,31 @@ export default function OTTracker() {
                   view === item.id
                     ? "#fff"
                     : "#718096",
-                padding: "12px 18px",
+                padding:
+                  "12px 18px",
                 cursor: "pointer",
                 fontWeight: 700,
                 fontSize: 13,
-                textAlign: "left",
-                fontFamily: "inherit",
+                textAlign:
+                  "left",
+                fontFamily:
+                  "inherit",
               }}
             >
               <span>
                 {item.icon}
               </span>
-
-              <span className="ot-sidebar-label">
-                {item.label}
-              </span>
+              {item.label}
             </button>
           ))}
 
           <div
             style={{
               marginTop: "auto",
-              padding: "18px",
+              padding: 18,
             }}
           >
             <div
-              className="ot-sidebar-label"
               style={{
                 color: "#718096",
                 fontSize: 10,
@@ -2229,14 +2525,14 @@ export default function OTTracker() {
                 overflow: "hidden",
                 textOverflow:
                   "ellipsis",
-                whiteSpace: "nowrap",
+                whiteSpace:
+                  "nowrap",
               }}
             >
               {session.user.email}
             </div>
 
             <div
-              className="ot-sidebar-label"
               style={{
                 color: "#4a5568",
                 fontSize: 10,
@@ -2252,7 +2548,8 @@ export default function OTTracker() {
                 width: "100%",
                 border:
                   "1px solid #2d3a67",
-                background: "transparent",
+                background:
+                  "transparent",
                 color: "#a0aec0",
                 padding: 8,
                 borderRadius: 8,
@@ -2266,12 +2563,15 @@ export default function OTTracker() {
           </div>
         </div>
 
-        {/* MAIN */}
+        {/* =================================================
+            MAIN
+        ================================================= */}
 
         <div
           style={{
             flex: 1,
-            padding: "28px 30px",
+            padding:
+              "28px 30px",
             maxWidth: 1250,
             width: "100%",
             margin: "0 auto",
@@ -2284,10 +2584,12 @@ export default function OTTracker() {
               display: "flex",
               justifyContent:
                 "space-between",
-              alignItems: "center",
+              alignItems:
+                "center",
               marginBottom: 22,
               gap: 15,
-              flexWrap: "wrap",
+              flexWrap:
+                "wrap",
             }}
           >
             <div>
@@ -2295,10 +2597,12 @@ export default function OTTracker() {
                 style={{
                   fontSize: 23,
                   fontWeight: 900,
-                  color: COLORS.sidebar,
+                  color:
+                    COLORS.sidebar,
                 }}
               >
-                {view === "today"
+                {view ===
+                "today"
                   ? "Today's OT Cases"
                   : "Session History"}
               </div>
@@ -2306,12 +2610,16 @@ export default function OTTracker() {
               <div
                 style={{
                   fontSize: 12,
-                  color: COLORS.muted,
+                  color:
+                    COLORS.muted,
                   marginTop: 3,
                 }}
               >
-                Shared Supabase records •{" "}
-                {fmtDate(sessionDate)}
+                Shared Supabase records
+                •{" "}
+                {fmtDate(
+                  sessionDate
+                )}
               </div>
             </div>
 
@@ -2319,7 +2627,8 @@ export default function OTTracker() {
               style={{
                 display: "flex",
                 gap: 8,
-                flexWrap: "wrap",
+                flexWrap:
+                  "wrap",
               }}
             >
               {authorized && (
@@ -2354,9 +2663,11 @@ export default function OTTracker() {
                   exportExcel
                 }
                 style={{
-                  background: "#fff",
+                  background:
+                    "#fff",
                   border: `1.5px solid ${COLORS.border}`,
-                  color: COLORS.muted,
+                  color:
+                    COLORS.muted,
                   padding:
                     "9px 16px",
                   borderRadius: 9,
@@ -2373,16 +2684,20 @@ export default function OTTracker() {
             </div>
           </div>
 
-          {/* TODAY */}
+          {/* =================================================
+              TODAY
+          ================================================= */}
 
-          {view === "today" && (
+          {view ===
+            "today" && (
             <>
               <div
                 style={{
                   display: "flex",
                   gap: 7,
                   marginBottom: 18,
-                  flexWrap: "wrap",
+                  flexWrap:
+                    "wrap",
                 }}
               >
                 {CATEGORIES.map(
@@ -2396,16 +2711,19 @@ export default function OTTracker() {
                       }
                       style={{
                         border: `1.5px solid ${
-                          activeTab === c
+                          activeTab ===
+                          c
                             ? "#4e6ef2"
                             : COLORS.border
                         }`,
                         background:
-                          activeTab === c
+                          activeTab ===
+                          c
                             ? "#ebedff"
                             : "#fff",
                         color:
-                          activeTab === c
+                          activeTab ===
+                          c
                             ? "#4e6ef2"
                             : COLORS.muted,
                         padding:
@@ -2454,7 +2772,8 @@ export default function OTTracker() {
 
               <div
                 style={{
-                  display: "grid",
+                  display:
+                    "grid",
                   gridTemplateColumns:
                     "repeat(4,1fr)",
                   gap: 12,
@@ -2463,84 +2782,104 @@ export default function OTTracker() {
               >
                 {[
                   {
-                    label: "Total",
+                    label:
+                      "Total",
                     val: patients.length,
-                    color: "#4e6ef2",
-                    bg: "#ebedff",
+                    color:
+                      "#4e6ef2",
+                    bg:
+                      "#ebedff",
                     icon: "📋",
                   },
                   {
-                    label: "Seen",
+                    label:
+                      "Seen",
                     val: seen,
-                    color: "#00c9a7",
-                    bg: "#e6faf7",
+                    color:
+                      "#00c9a7",
+                    bg:
+                      "#e6faf7",
                     icon: "✅",
                   },
                   {
-                    label: "Not Seen",
-                    val: notSeen,
-                    color: "#e63757",
-                    bg: "#fdeef1",
+                    label:
+                      "Not Seen",
+                    val:
+                      notSeen,
+                    color:
+                      "#e63757",
+                    bg:
+                      "#fdeef1",
                     icon: "❌",
                   },
                   {
-                    label: "Pending",
-                    val: pending,
-                    color: "#f6c90e",
-                    bg: "#fffbe6",
+                    label:
+                      "Pending",
+                    val:
+                      pending,
+                    color:
+                      "#f6c90e",
+                    bg:
+                      "#fffbe6",
                     icon: "⏳",
                   },
-                ].map((s) => (
-                  <div
-                    key={s.label}
-                    style={{
-                      background:
-                        COLORS.card,
-                      borderRadius: 12,
-                      padding:
-                        "14px 16px",
-                      border: `1.5px solid ${s.color}22`,
-                      boxShadow:
-                        "0 2px 8px rgba(0,0,0,0.05)",
-                    }}
-                  >
+                ].map(
+                  (s) => (
                     <div
+                      key={
+                        s.label
+                      }
                       style={{
-                        fontSize: 18,
-                        marginBottom: 4,
+                        background:
+                          COLORS.card,
+                        borderRadius: 12,
+                        padding:
+                          "14px 16px",
+                        border: `1.5px solid ${s.color}22`,
+                        boxShadow:
+                          "0 2px 8px rgba(0,0,0,.05)",
                       }}
                     >
-                      {s.icon}
-                    </div>
+                      <div
+                        style={{
+                          fontSize: 18,
+                          marginBottom: 4,
+                        }}
+                      >
+                        {s.icon}
+                      </div>
 
-                    <div
-                      style={{
-                        fontSize: 24,
-                        fontWeight: 900,
-                        color: s.color,
-                      }}
-                    >
-                      {s.val}
-                    </div>
+                      <div
+                        style={{
+                          fontSize: 24,
+                          fontWeight: 900,
+                          color:
+                            s.color,
+                        }}
+                      >
+                        {s.val}
+                      </div>
 
-                    <div
-                      style={{
-                        fontSize: 11,
-                        color: COLORS.muted,
-                        fontWeight: 700,
-                        textTransform:
-                          "uppercase",
-                        letterSpacing:
-                          0.5,
-                      }}
-                    >
-                      {s.label}
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color:
+                            COLORS.muted,
+                          fontWeight: 700,
+                          textTransform:
+                            "uppercase",
+                        }}
+                      >
+                        {s.label}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                )}
               </div>
 
-              {/* ADD / EDIT PATIENT */}
+              {/* =================================================
+                  ADD PATIENT
+              ================================================= */}
 
               {showAdd && (
                 <div
@@ -2553,15 +2892,14 @@ export default function OTTracker() {
                     border:
                       "1.5px solid #4e6ef244",
                     boxShadow:
-                      "0 4px 20px rgba(78,110,242,0.10)",
-                    animation:
-                      "popIn .25s ease",
+                      "0 4px 20px rgba(78,110,242,.10)",
                   }}
                 >
                   <div
                     style={{
                       fontWeight: 800,
-                      color: "#4e6ef2",
+                      color:
+                        "#4e6ef2",
                       marginBottom: 14,
                       fontSize: 14,
                     }}
@@ -2573,7 +2911,8 @@ export default function OTTracker() {
 
                   <div
                     style={{
-                      display: "grid",
+                      display:
+                        "grid",
                       gridTemplateColumns:
                         "repeat(auto-fit,minmax(160px,1fr))",
                       gap: 10,
@@ -2616,51 +2955,59 @@ export default function OTTracker() {
                           "Date of Referral",
                         type: "date",
                       },
-                    ].map((f) => (
-                      <div
-                        key={f.key}
-                        style={{
-                          display:
-                            "flex",
-                          flexDirection:
-                            "column",
-                          gap: 4,
-                        }}
-                      >
-                        <label
-                          style={
-                            labelStyle
+                    ].map(
+                      (f) => (
+                        <div
+                          key={
+                            f.key
                           }
+                          style={{
+                            display:
+                              "flex",
+                            flexDirection:
+                              "column",
+                            gap: 4,
+                          }}
                         >
-                          {f.label}
-                        </label>
+                          <label
+                            style={
+                              labelStyle
+                            }
+                          >
+                            {f.label}
+                          </label>
 
-                        <input
-                          type={f.type}
-                          value={
-                            form[
-                              f.key
-                            ]
-                          }
-                          onChange={(
-                            e
-                          ) =>
-                            setForm(
-                              (x) => ({
-                                ...x,
-                                [f.key]:
-                                  e
-                                    .target
-                                    .value,
-                              })
-                            )
-                          }
-                          style={
-                            inputStyle
-                          }
-                        />
-                      </div>
-                    ))}
+                          <input
+                            type={
+                              f.type
+                            }
+                            value={
+                              form[
+                                f.key
+                              ]
+                            }
+                            onChange={(
+                              e
+                            ) =>
+                              setForm(
+                                (
+                                  x
+                                ) => ({
+                                  ...x,
+                                  [f.key]:
+                                    e
+                                      .target
+                                      .value,
+                                })
+                              )
+                            }
+                            style={
+                              inputStyle
+                            }
+                          />
+                        </div>
+                      )
+                    )}
 
                     <div
                       style={{
@@ -2683,7 +3030,9 @@ export default function OTTracker() {
                         value={
                           form.category
                         }
-                        onChange={(e) =>
+                        onChange={(
+                          e
+                        ) =>
                           setForm(
                             (x) => ({
                               ...x,
@@ -2700,7 +3049,8 @@ export default function OTTracker() {
                       >
                         {CATEGORIES.filter(
                           (c) =>
-                            c !== "All"
+                            c !==
+                            "All"
                         ).map(
                           (c) => (
                             <option
@@ -2737,7 +3087,9 @@ export default function OTTracker() {
                         value={
                           form.diagnosis
                         }
-                        onChange={(e) =>
+                        onChange={(
+                          e
+                        ) =>
                           setForm(
                             (x) => ({
                               ...x,
@@ -2773,12 +3125,12 @@ export default function OTTracker() {
                         background:
                           "#4e6ef2",
                         border: 0,
-                        color: "#fff",
+                        color:
+                          "#fff",
                         padding:
                           "11px 28px",
                         borderRadius: 10,
                         fontWeight: 700,
-                        fontSize: 13,
                         cursor:
                           "pointer",
                       }}
@@ -2803,7 +3155,6 @@ export default function OTTracker() {
                           "11px 20px",
                         borderRadius: 10,
                         fontWeight: 700,
-                        fontSize: 13,
                         cursor:
                           "pointer",
                       }}
@@ -2817,7 +3168,7 @@ export default function OTTracker() {
               {/* SEARCH */}
 
               <input
-                placeholder="🔍  Search by name, IP no, reg no, diagnosis, doctor, room..."
+                placeholder="🔍 Search by name, IP no, reg no, diagnosis, doctor, room..."
                 value={search}
                 onChange={(e) =>
                   setSearch(
@@ -2833,14 +3184,15 @@ export default function OTTracker() {
                   fontSize: 13,
                   fontFamily:
                     "inherit",
-                  background: "#fff",
+                  background:
+                    "#fff",
                   marginBottom: 14,
-                  color:
-                    COLORS.text,
                 }}
               />
 
-              {/* PATIENT LIST */}
+              {/* =================================================
+                  PATIENT LIST
+              ================================================= */}
 
               <div
                 style={{
@@ -2884,568 +3236,539 @@ export default function OTTracker() {
                   </div>
                 )}
 
-                {filtered.map((p) => {
-                  const rec =
-                    getRecord(
-                      p.id
-                    );
+                {filtered.map(
+                  (p) => {
+                    const rec =
+                      getRecord(
+                        p.id
+                      );
 
-                  const catStyle =
-                    CAT_COLORS[
-                      p.category
-                    ] || {
-                      bg: "#f7fafc",
-                      color:
-                        "#718096",
-                      border:
-                        "#e2e8f0",
-                    };
-
-                  const isExpanded =
-                    expandedId ===
-                    p.id;
-
-                  return (
-                    <div
-                      key={p.id}
-                      style={{
-                        background:
-                          COLORS.card,
-                        borderRadius: 14,
+                    const catStyle =
+                      CAT_COLORS[
+                        p.category
+                      ] || {
+                        bg: "#f7fafc",
+                        color:
+                          "#718096",
                         border:
-                          rec.seen ===
-                          true
-                            ? "1.5px solid #00c9a744"
-                            : rec.seen ===
-                              false
-                            ? "1.5px solid #e6375744"
-                            : `1.5px solid ${COLORS.border}`,
-                        boxShadow:
-                          "0 2px 8px rgba(0,0,0,0.05)",
-                        overflow:
-                          "hidden",
-                      }}
-                    >
+                          "#e2e8f0",
+                      };
+
+                    const isExpanded =
+                      expandedId ===
+                      p.id;
+
+                    const pAssessments =
+                      assessmentsForPatient(
+                        p.id
+                      );
+
+                    return (
                       <div
+                        key={p.id}
                         style={{
-                          display:
-                            "grid",
-                          gridTemplateColumns:
-                            "1fr auto",
-                          alignItems:
-                            "center",
-                          padding:
-                            "14px 16px",
-                          gap: 12,
-                          cursor:
-                            "pointer",
-                        }}
-                        onClick={() =>
-                          setExpandedId(
-                            isExpanded
-                              ? null
-                              : p.id
-                          )
-                        }
-                      >
-                        <div
-                          style={{
-                            display:
-                              "flex",
-                            alignItems:
-                              "flex-start",
-                            gap: 12,
-                            minWidth: 0,
-                          }}
-                        >
-                          <div
-                            style={{
-                              background:
-                                catStyle.bg,
-                              color:
-                                catStyle.color,
-                              border: `1px solid ${catStyle.border}`,
-                              padding:
-                                "3px 10px",
-                              borderRadius: 7,
-                              fontSize: 10,
-                              fontWeight: 800,
-                              whiteSpace:
-                                "nowrap",
-                              marginTop: 2,
-                            }}
-                          >
-                            {
-                              p.category
-                            }
-                          </div>
-
-                          <div
-                            style={{
-                              minWidth: 0,
-                            }}
-                          >
-                            <div
-                              style={{
-                                fontWeight: 800,
-                                fontSize: 14,
-                              }}
-                            >
-                              {p.name}
-                            </div>
-
-                            <div
-                              style={{
-                                fontSize: 12,
-                                color:
-                                  COLORS.muted,
-                                marginTop: 2,
-                              }}
-                            >
-                              {
-                                p.diagnosis
-                              }
-                            </div>
-
-                            <div
-                              style={{
-                                display:
-                                  "flex",
-                                flexWrap:
-                                  "wrap",
-                                gap: 6,
-                                marginTop: 6,
-                              }}
-                            >
-                              {[
-                                {
-                                  label:
-                                    "IP",
-                                  val:
-                                    p.ipNo,
-                                },
-                                {
-                                  label:
-                                    "Reg",
-                                  val:
-                                    p.regNo,
-                                },
-                                {
-                                  label:
-                                    "Dr",
-                                  val:
-                                    p.consultingDr,
-                                },
-                                {
-                                  label:
-                                    "Room",
-                                  val:
-                                    p.roomNo,
-                                },
-                              ].map(
-                                (f) =>
-                                  f.val ? (
-                                    <span
-                                      key={
-                                        f.label
-                                      }
-                                      style={{
-                                        fontSize: 11,
-                                        background:
-                                          "#f0f4f8",
-                                        color:
-                                          "#4a5568",
-                                        padding:
-                                          "2px 8px",
-                                        borderRadius: 6,
-                                        fontWeight: 600,
-                                      }}
-                                    >
-                                      <span
-                                        style={{
-                                          color:
-                                            COLORS.muted,
-                                        }}
-                                      >
-                                        {
-                                          f.label
-                                        }
-                                        :{" "}
-                                      </span>
-                                      {
-                                        f.val
-                                      }
-                                    </span>
-                                  ) : null
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div
-                          style={{
-                            display:
-                              "flex",
-                            flexDirection:
-                              "column",
-                            alignItems:
-                              "flex-end",
-                            gap: 6,
-                          }}
-                        >
-                          <div
-                            style={{
-                              background:
-                                rec.seen ===
-                                true
-                                  ? "#e6faf7"
-                                  : rec.seen ===
-                                    false
-                                  ? "#fdeef1"
-                                  : "#f7fafc",
-                              color:
-                                rec.seen ===
-                                true
-                                  ? "#00c9a7"
-                                  : rec.seen ===
-                                    false
-                                  ? "#e63757"
-                                  : "#a0aec0",
-                              border: `1.5px solid ${
-                                rec.seen ===
-                                true
-                                  ? "#00c9a7"
-                                  : rec.seen ===
-                                    false
-                                  ? "#e63757"
-                                  : "#e2e8f0"
-                              }`,
-                              padding:
-                                "5px 14px",
-                              borderRadius: 8,
-                              fontWeight: 800,
-                              fontSize: 12,
-                              whiteSpace:
-                                "nowrap",
-                            }}
-                          >
-                            {rec.seen ===
+                          background:
+                            COLORS.card,
+                          borderRadius: 14,
+                          border:
+                            rec.seen ===
                             true
-                              ? "✅ Seen"
+                              ? "1.5px solid #00c9a744"
                               : rec.seen ===
                                 false
-                              ? "❌ Not Seen"
-                              : "⏳ Pending"}
-                          </div>
+                              ? "1.5px solid #e6375744"
+                              : `1.5px solid ${COLORS.border}`,
+                          boxShadow:
+                            "0 2px 8px rgba(0,0,0,.05)",
+                          overflow:
+                            "hidden",
+                        }}
+                      >
+                        {/* PATIENT HEADER */}
 
-                          <div
-                            style={{
-                              fontSize: 11,
-                              color:
-                                "#a0aec0",
-                            }}
-                          >
-                            {isExpanded
-                              ? "▲ collapse"
-                              : "▼ expand"}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* EXPANDED */}
-
-                      {isExpanded && (
                         <div
                           style={{
-                            borderTop: `1px solid ${COLORS.border}`,
-                            padding: 16,
-                            background:
-                              "#fafcff",
+                            display:
+                              "grid",
+                            gridTemplateColumns:
+                              "1fr auto",
+                            alignItems:
+                              "center",
+                            padding:
+                              "14px 16px",
+                            gap: 12,
+                            cursor:
+                              "pointer",
                           }}
+                          onClick={() =>
+                            setExpandedId(
+                              isExpanded
+                                ? null
+                                : p.id
+                            )
+                          }
                         >
                           <div
                             style={{
                               display:
                                 "flex",
-                              gap: 10,
-                              marginBottom: 14,
-                              flexWrap:
-                                "wrap",
+                              alignItems:
+                                "flex-start",
+                              gap: 12,
+                              minWidth: 0,
                             }}
                           >
-                            {authorized && (
-                              <button
-                                className="btn"
-                                onClick={() =>
-                                  markSeen(
-                                    p.id
-                                  )
-                                }
-                                style={{
-                                  background:
-                                    rec.seen ===
-                                    true
-                                      ? "#00c9a7"
-                                      : "#e6faf7",
-                                  border:
-                                    "1.5px solid #00c9a7",
-                                  color:
-                                    rec.seen ===
-                                    true
-                                      ? "#fff"
-                                      : "#00c9a7",
-                                  padding:
-                                    "9px 22px",
-                                  borderRadius: 10,
-                                  fontWeight: 800,
-                                  fontSize: 13,
-                                  cursor:
-                                    "pointer",
-                                }}
-                              >
-                                ✅ Seen
-                              </button>
-                            )}
+                            <div
+                              style={{
+                                background:
+                                  catStyle.bg,
+                                color:
+                                  catStyle.color,
+                                border: `1px solid ${catStyle.border}`,
+                                padding:
+                                  "3px 10px",
+                                borderRadius: 7,
+                                fontSize: 10,
+                                fontWeight: 800,
+                              }}
+                            >
+                              {p.category}
+                            </div>
 
-                            {authorized && (
-                              <button
-                                className="btn"
-                                onClick={() =>
-                                  markNotSeen(
-                                    p.id,
-                                    rec.reason ||
-                                      ""
-                                  )
-                                }
-                                style={{
-                                  background:
-                                    rec.seen ===
-                                    false
-                                      ? "#e63757"
-                                      : "#fdeef1",
-                                  border:
-                                    "1.5px solid #e63757",
-                                  color:
-                                    rec.seen ===
-                                    false
-                                      ? "#fff"
-                                      : "#e63757",
-                                  padding:
-                                    "9px 22px",
-                                  borderRadius: 10,
-                                  fontWeight: 800,
-                                  fontSize: 13,
-                                  cursor:
-                                    "pointer",
-                                }}
-                              >
-                                ❌ Not Seen
-                              </button>
-                            )}
-
-                            {/* ASSESSMENT BUTTONS */}
-
-                            {authorized &&
-                              ASSESSMENT_SCALES.map(
-                                (scale) => (
-                                  <button
-                                    key={
-                                      scale.id
-                                    }
-                                    className="btn"
-                                    onClick={(
-                                      e
-                                    ) => {
-                                      e.stopPropagation();
-
-                                      openAssessment(
-                                        p,
-                                        scale.id
-                                      );
-                                    }}
-                                    style={{
-                                      background:
-                                        "#e8f5e9",
-                                      border:
-                                        "1.5px solid #43a047",
-                                      color:
-                                        "#2e7d32",
-                                      padding:
-                                        "9px 13px",
-                                      borderRadius: 10,
-                                      fontWeight: 700,
-                                      fontSize: 12,
-                                      cursor:
-                                        "pointer",
-                                    }}
-                                  >
-                                    📋{" "}
-                                    {
-                                      scale.shortName
-                                    }
-                                  </button>
-                                )
-                              )}
-
-                            {authorized && (
-                              <button
-                                className="btn"
-                                onClick={() =>
-                                  openEditForm(
-                                    p
-                                  )
-                                }
-                                style={{
-                                  background:
-                                    "#ebedff",
-                                  border:
-                                    "1.5px solid #4e6ef2",
-                                  color:
-                                    "#4e6ef2",
-                                  padding:
-                                    "9px 18px",
-                                  borderRadius: 10,
-                                  fontWeight: 700,
-                                  fontSize: 13,
-                                  cursor:
-                                    "pointer",
-                                  marginLeft:
-                                    "auto",
-                                }}
-                              >
-                                ✏️ Edit
-                              </button>
-                            )}
-
-                            {role ===
-                              "admin" && (
-                              <button
-                                className="btn"
-                                onClick={() =>
-                                  removePatient(
-                                    p.id
-                                  )
-                                }
-                                style={{
-                                  background:
-                                    "#f7fafc",
-                                  border: `1.5px solid ${COLORS.border}`,
-                                  color:
-                                    COLORS.muted,
-                                  padding:
-                                    "9px 16px",
-                                  borderRadius: 10,
-                                  fontWeight: 700,
-                                  fontSize: 13,
-                                  cursor:
-                                    "pointer",
-                                }}
-                              >
-                                🗑 Remove
-                              </button>
-                            )}
-                          </div>
-
-                          {/* NOT SEEN REASON */}
-
-                          {authorized &&
-                            rec.seen ===
-                              false && (
+                            <div
+                              style={{
+                                minWidth: 0,
+                              }}
+                            >
                               <div
                                 style={{
-                                  marginBottom: 12,
+                                  fontWeight: 800,
+                                  fontSize: 14,
                                 }}
                               >
-                                <label
-                                  style={{
-                                    fontSize: 11,
-                                    fontWeight: 700,
-                                    color:
-                                      "#e63757",
-                                    textTransform:
-                                      "uppercase",
-                                    letterSpacing:
-                                      0.6,
-                                    display:
-                                      "block",
-                                    marginBottom:
-                                      6,
-                                  }}
-                                >
-                                  Reason for Not
-                                  Seen *
-                                </label>
+                                {p.name}
+                              </div>
 
-                                <div
-                                  style={{
-                                    display:
-                                      "flex",
-                                    flexWrap:
-                                      "wrap",
-                                    gap: 7,
-                                    marginBottom:
-                                      8,
-                                  }}
-                                >
-                                  {NOT_SEEN_REASONS.map(
-                                    (r) => (
-                                      <button
-                                        key={r}
-                                        className="btn"
-                                        onClick={() =>
-                                          setRecord(
-                                            p.id,
-                                            {
-                                              reason:
-                                                r,
-                                            }
-                                          )
+                              <div
+                                style={{
+                                  fontSize: 12,
+                                  color:
+                                    COLORS.muted,
+                                  marginTop: 2,
+                                }}
+                              >
+                                {p.diagnosis}
+                              </div>
+
+                              <div
+                                style={{
+                                  display:
+                                    "flex",
+                                  flexWrap:
+                                    "wrap",
+                                  gap: 6,
+                                  marginTop: 6,
+                                }}
+                              >
+                                {[
+                                  {
+                                    label:
+                                      "IP",
+                                    val:
+                                      p.ipNo,
+                                  },
+                                  {
+                                    label:
+                                      "Reg",
+                                    val:
+                                      p.regNo,
+                                  },
+                                  {
+                                    label:
+                                      "Dr",
+                                    val:
+                                      p.consultingDr,
+                                  },
+                                  {
+                                    label:
+                                      "Room",
+                                    val:
+                                      p.roomNo,
+                                  },
+                                ].map(
+                                  (f) =>
+                                    f.val ? (
+                                      <span
+                                        key={
+                                          f.label
                                         }
                                         style={{
-                                          padding:
-                                            "6px 13px",
-                                          borderRadius:
-                                            8,
-                                          border: `1.5px solid ${
-                                            rec.reason ===
-                                            r
-                                              ? "#e63757"
-                                              : "#e2e8f0"
-                                          }`,
+                                          fontSize: 11,
                                           background:
-                                            rec.reason ===
-                                            r
-                                              ? "#fdeef1"
-                                              : "#fff",
+                                            "#f0f4f8",
                                           color:
-                                            rec.reason ===
-                                            r
-                                              ? "#e63757"
-                                              : COLORS.muted,
-                                          fontWeight:
-                                            rec.reason ===
-                                            r
-                                              ? 700
-                                              : 500,
-                                          fontSize: 12,
-                                          cursor:
-                                            "pointer",
+                                            "#4a5568",
+                                          padding:
+                                            "2px 8px",
+                                          borderRadius: 6,
+                                          fontWeight: 600,
                                         }}
                                       >
-                                        {r}
-                                      </button>
-                                    )
-                                  )}
-                                </div>
+                                        <span
+                                          style={{
+                                            color:
+                                              COLORS.muted,
+                                          }}
+                                        >
+                                          {
+                                            f.label
+                                          }
+                                          :{" "}
+                                        </span>
+                                        {
+                                          f.val
+                                        }
+                                      </span>
+                                    ) : null
+                                )}
+                              </div>
+                            </div>
+                          </div>
 
-                                {(rec.reason ===
-                                  "Other" ||
-                                  !NOT_SEEN_REASONS.slice(
-                                    0,
-                                    -1
-                                  ).includes(
-                                    rec.reason
-                                  )) && (
+                          <div
+                            style={{
+                              display:
+                                "flex",
+                              flexDirection:
+                                "column",
+                              alignItems:
+                                "flex-end",
+                              gap: 6,
+                            }}
+                          >
+                            <div
+                              style={{
+                                background:
+                                  rec.seen ===
+                                  true
+                                    ? "#e6faf7"
+                                    : rec.seen ===
+                                      false
+                                    ? "#fdeef1"
+                                    : "#f7fafc",
+                                color:
+                                  rec.seen ===
+                                  true
+                                    ? "#00c9a7"
+                                    : rec.seen ===
+                                      false
+                                    ? "#e63757"
+                                    : "#a0aec0",
+                                padding:
+                                  "5px 14px",
+                                borderRadius: 8,
+                                fontWeight: 800,
+                                fontSize: 12,
+                              }}
+                            >
+                              {rec.seen ===
+                              true
+                                ? "✅ Seen"
+                                : rec.seen ===
+                                  false
+                                ? "❌ Not Seen"
+                                : "⏳ Pending"}
+                            </div>
+
+                            <div
+                              style={{
+                                fontSize: 11,
+                                color:
+                                  "#a0aec0",
+                              }}
+                            >
+                              {isExpanded
+                                ? "▲ collapse"
+                                : "▼ expand"}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* EXPANDED */}
+
+                        {isExpanded && (
+                          <div
+                            style={{
+                              borderTop:
+                                `1px solid ${COLORS.border}`,
+                              padding: 16,
+                              background:
+                                "#fafcff",
+                            }}
+                          >
+                            {/* ACTION BUTTONS */}
+
+                            <div
+                              style={{
+                                display:
+                                  "flex",
+                                gap: 10,
+                                marginBottom: 14,
+                                flexWrap:
+                                  "wrap",
+                              }}
+                            >
+                              {authorized && (
+                                <button
+                                  className="btn"
+                                  onClick={() =>
+                                    markSeen(
+                                      p.id
+                                    )
+                                  }
+                                  style={{
+                                    background:
+                                      rec.seen ===
+                                      true
+                                        ? "#00c9a7"
+                                        : "#e6faf7",
+                                    border:
+                                      "1.5px solid #00c9a7",
+                                    color:
+                                      rec.seen ===
+                                      true
+                                        ? "#fff"
+                                        : "#00c9a7",
+                                    padding:
+                                      "9px 22px",
+                                    borderRadius: 10,
+                                    fontWeight: 800,
+                                    cursor:
+                                      "pointer",
+                                  }}
+                                >
+                                  ✅ Seen
+                                </button>
+                              )}
+
+                              {authorized && (
+                                <button
+                                  className="btn"
+                                  onClick={() =>
+                                    markNotSeen(
+                                      p.id,
+                                      rec.reason ||
+                                        ""
+                                    )
+                                  }
+                                  style={{
+                                    background:
+                                      rec.seen ===
+                                      false
+                                        ? "#e63757"
+                                        : "#fdeef1",
+                                    border:
+                                      "1.5px solid #e63757",
+                                    color:
+                                      rec.seen ===
+                                      false
+                                        ? "#fff"
+                                        : "#e63757",
+                                    padding:
+                                      "9px 22px",
+                                    borderRadius: 10,
+                                    fontWeight: 800,
+                                    cursor:
+                                      "pointer",
+                                  }}
+                                >
+                                  ❌ Not Seen
+                                </button>
+                              )}
+
+                              {/* ==========================
+                                  FOUR ASSESSMENT BUTTONS
+                              ========================== */}
+
+                              {authorized &&
+                                ASSESSMENT_SCALES.map(
+                                  (scale) => (
+                                    <button
+                                      key={
+                                        scale.id
+                                      }
+                                      className="btn"
+                                      onClick={(
+                                        e
+                                      ) => {
+                                        e.stopPropagation();
+
+                                        openAssessment(
+                                          p,
+                                          scale.id
+                                        );
+                                      }}
+                                      style={{
+                                        background:
+                                          "#ebedff",
+                                        border:
+                                          "1.5px solid #4e6ef2",
+                                        color:
+                                          "#4e6ef2",
+                                        padding:
+                                          "9px 14px",
+                                        borderRadius: 10,
+                                        fontWeight: 700,
+                                        fontSize: 12,
+                                        cursor:
+                                          "pointer",
+                                      }}
+                                    >
+                                      📋{" "}
+                                      {
+                                        scale.shortName
+                                      }
+                                    </button>
+                                  )
+                                )}
+
+                              {authorized && (
+                                <button
+                                  className="btn"
+                                  onClick={() =>
+                                    openEditForm(
+                                      p
+                                    )
+                                  }
+                                  style={{
+                                    background:
+                                      "#fff",
+                                    border:
+                                      "1.5px solid #4e6ef2",
+                                    color:
+                                      "#4e6ef2",
+                                    padding:
+                                      "9px 18px",
+                                    borderRadius: 10,
+                                    fontWeight: 700,
+                                    cursor:
+                                      "pointer",
+                                    marginLeft:
+                                      "auto",
+                                  }}
+                                >
+                                  ✏️ Edit
+                                </button>
+                              )}
+
+                              {role ===
+                                "admin" && (
+                                <button
+                                  className="btn"
+                                  onClick={() =>
+                                    removePatient(
+                                      p.id
+                                    )
+                                  }
+                                  style={{
+                                    background:
+                                      "#fff",
+                                    border:
+                                      `1.5px solid ${COLORS.border}`,
+                                    color:
+                                      COLORS.muted,
+                                    padding:
+                                      "9px 16px",
+                                    borderRadius: 10,
+                                    fontWeight: 700,
+                                    cursor:
+                                      "pointer",
+                                  }}
+                                >
+                                  🗑 Remove
+                                </button>
+                              )}
+                            </div>
+
+                            {/* NOT SEEN */}
+
+                            {authorized &&
+                              rec.seen ===
+                                false && (
+                                <div
+                                  style={{
+                                    marginBottom: 12,
+                                  }}
+                                >
+                                  <label
+                                    style={{
+                                      ...labelStyle,
+                                      color:
+                                        "#e63757",
+                                    }}
+                                  >
+                                    Reason for Not Seen *
+                                  </label>
+
+                                  <div
+                                    style={{
+                                      display:
+                                        "flex",
+                                      flexWrap:
+                                        "wrap",
+                                      gap: 7,
+                                      marginBottom: 8,
+                                    }}
+                                  >
+                                    {NOT_SEEN_REASONS.map(
+                                      (r) => (
+                                        <button
+                                          key={
+                                            r
+                                          }
+                                          className="btn"
+                                          onClick={() =>
+                                            setRecord(
+                                              p.id,
+                                              {
+                                                reason:
+                                                  r,
+                                              }
+                                            )
+                                          }
+                                          style={{
+                                            padding:
+                                              "6px 13px",
+                                            borderRadius: 8,
+                                            border: `1.5px solid ${
+                                              rec.reason ===
+                                              r
+                                                ? "#e63757"
+                                                : "#e2e8f0"
+                                            }`,
+                                            background:
+                                              rec.reason ===
+                                              r
+                                                ? "#fdeef1"
+                                                : "#fff",
+                                            color:
+                                              rec.reason ===
+                                              r
+                                                ? "#e63757"
+                                                : COLORS.muted,
+                                            fontWeight:
+                                              600,
+                                            fontSize: 12,
+                                            cursor:
+                                              "pointer",
+                                          }}
+                                        >
+                                          {r}
+                                        </button>
+                                      )
+                                    )}
+                                  </div>
+
                                   <input
                                     placeholder="Specify reason..."
                                     value={
@@ -3475,127 +3798,249 @@ export default function OTTracker() {
                                         "100%",
                                       padding:
                                         "9px 12px",
-                                      borderRadius:
-                                        9,
+                                      borderRadius: 9,
                                       border:
                                         "1.5px solid #e63757",
                                       fontSize: 13,
-                                      fontFamily:
-                                        "inherit",
-                                      background:
-                                        "#fff5f5",
-                                      color:
-                                        COLORS.text,
                                     }}
                                   />
-                                )}
-                              </div>
-                            )}
+                                </div>
+                              )}
 
-                          {/* NOTES */}
+                            {/* NOTES */}
 
-                          <div>
-                            <label
-                              style={{
-                                fontSize: 11,
-                                fontWeight: 700,
-                                color:
-                                  COLORS.muted,
-                                textTransform:
-                                  "uppercase",
-                                letterSpacing:
-                                  0.6,
-                                display:
-                                  "block",
-                                marginBottom:
-                                  6,
-                              }}
-                            >
-                              📝 Session Notes /
-                              Observations
-                            </label>
-
-                            {authorized ? (
-                              <textarea
-                                placeholder="Treatment given, progress, goals, recommendations..."
-                                value={
-                                  rec.notes ||
-                                  ""
-                                }
-                                onChange={(
-                                  e
-                                ) =>
-                                  setRecord(
-                                    p.id,
-                                    {
-                                      notes:
-                                        e
-                                          .target
-                                          .value,
-                                    }
-                                  )
-                                }
+                            <div>
+                              <label
                                 style={{
-                                  width:
-                                    "100%",
-                                  minHeight: 80,
-                                  padding:
-                                    "10px 12px",
-                                  borderRadius:
-                                    10,
-                                  border: `1.5px solid ${COLORS.border}`,
-                                  fontSize: 13,
-                                  fontFamily:
-                                    "inherit",
-                                  resize:
-                                    "vertical",
-                                  color:
-                                    COLORS.text,
-                                  background:
-                                    "#fff",
-                                }}
-                              />
-                            ) : (
-                              <div
-                                style={{
-                                  width:
-                                    "100%",
-                                  minHeight: 80,
-                                  padding:
-                                    "10px 12px",
-                                  borderRadius:
-                                    10,
-                                  border: `1.5px solid ${COLORS.border}`,
-                                  fontSize: 13,
-                                  color:
-                                    rec.notes
-                                      ? COLORS.text
-                                      : "#a0aec0",
-                                  background:
-                                    "#f7fafc",
-                                  whiteSpace:
-                                    "pre-wrap",
+                                  ...labelStyle,
+                                  marginBottom: 6,
                                 }}
                               >
-                                {rec.notes ||
-                                  "Read-only view. Authorized staff can add session notes."}
+                                📝 Session Notes / Observations
+                              </label>
+
+                              {authorized ? (
+                                <textarea
+                                  placeholder="Treatment given, progress, goals, recommendations..."
+                                  value={
+                                    rec.notes ||
+                                    ""
+                                  }
+                                  onChange={(
+                                    e
+                                  ) =>
+                                    setRecord(
+                                      p.id,
+                                      {
+                                        notes:
+                                          e
+                                            .target
+                                            .value,
+                                      }
+                                    )
+                                  }
+                                  style={{
+                                    width:
+                                      "100%",
+                                    minHeight: 80,
+                                    padding:
+                                      "10px 12px",
+                                    borderRadius: 10,
+                                    border: `1.5px solid ${COLORS.border}`,
+                                    fontSize: 13,
+                                    resize:
+                                      "vertical",
+                                  }}
+                                />
+                              ) : (
+                                <div
+                                  style={{
+                                    width:
+                                      "100%",
+                                    minHeight: 80,
+                                    padding:
+                                      "10px 12px",
+                                    borderRadius: 10,
+                                    border: `1.5px solid ${COLORS.border}`,
+                                    background:
+                                      "#f7fafc",
+                                    whiteSpace:
+                                      "pre-wrap",
+                                  }}
+                                >
+                                  {rec.notes ||
+                                    "Read-only view."}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* =================================================
+                                SAVED ASSESSMENTS
+                            ================================================= */}
+
+                            <div
+                              style={{
+                                marginTop: 20,
+                                paddingTop: 16,
+                                borderTop:
+                                  `1px solid ${COLORS.border}`,
+                              }}
+                            >
+                              <div
+                                style={{
+                                  fontSize: 13,
+                                  fontWeight: 900,
+                                  color:
+                                    COLORS.sidebar,
+                                  marginBottom: 10,
+                                }}
+                              >
+                                📊 Assessment History
                               </div>
-                            )}
+
+                              {pAssessments.length ===
+                              0 ? (
+                                <div
+                                  style={{
+                                    padding: 14,
+                                    background:
+                                      "#f7fafc",
+                                    borderRadius: 9,
+                                    color:
+                                      COLORS.muted,
+                                    fontSize: 12,
+                                  }}
+                                >
+                                  No assessments
+                                  recorded
+                                  yet.
+                                </div>
+                              ) : (
+                                <div
+                                  style={{
+                                    display:
+                                      "flex",
+                                    flexDirection:
+                                      "column",
+                                    gap: 8,
+                                  }}
+                                >
+                                  {pAssessments.map(
+                                    (
+                                      a
+                                    ) => (
+                                      <div
+                                        key={
+                                          a.id
+                                        }
+                                        style={{
+                                          background:
+                                            "#fff",
+                                          border:
+                                            `1px solid ${COLORS.border}`,
+                                          borderRadius: 10,
+                                          padding:
+                                            12,
+                                          display:
+                                            "flex",
+                                          justifyContent:
+                                            "space-between",
+                                          gap: 12,
+                                          flexWrap:
+                                            "wrap",
+                                        }}
+                                      >
+                                        <div>
+                                          <div
+                                            style={{
+                                              fontWeight: 800,
+                                              color:
+                                                "#4e6ef2",
+                                              fontSize: 13,
+                                            }}
+                                          >
+                                            📋{" "}
+                                            {
+                                              a.assessment_type
+                                            }
+                                          </div>
+
+                                          <div
+                                            style={{
+                                              fontSize: 11,
+                                              color:
+                                                COLORS.muted,
+                                              marginTop: 4,
+                                            }}
+                                          >
+                                            Date:{" "}
+                                            {fmtDate(
+                                              a.assessment_date
+                                            )}
+                                          </div>
+
+                                          <div
+                                            style={{
+                                              fontSize: 11,
+                                              color:
+                                                COLORS.muted,
+                                              marginTop: 3,
+                                            }}
+                                          >
+                                            Entered by:{" "}
+                                            <strong
+                                              style={{
+                                                color:
+                                                  COLORS.text,
+                                              }}
+                                            >
+                                              {a.entered_by_email ||
+                                                a.entered_by ||
+                                                "Unknown"}
+                                            </strong>
+                                          </div>
+                                        </div>
+
+                                        <div
+                                          style={{
+                                            background:
+                                              "#e6faf7",
+                                            color:
+                                              "#087f6c",
+                                            borderRadius: 9,
+                                            padding:
+                                              "8px 14px",
+                                            fontWeight: 900,
+                                            fontSize: 14,
+                                          }}
+                                        >
+                                          Score:{" "}
+                                          {
+                                            a.total_score
+                                          }
+                                        </div>
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                        )}
+                      </div>
+                    );
+                  }
+                )}
               </div>
             </>
           )}
 
           {/* =================================================
-              HISTORY
-              ================================================= */}
+              SESSION HISTORY
+          ================================================= */}
 
-          {view === "history" && (
+          {view ===
+            "history" && (
             <div>
               {allDates.length ===
               0 ? (
@@ -3624,8 +4069,8 @@ export default function OTTracker() {
                       marginTop: 10,
                     }}
                   >
-                    No session
-                    records yet
+                    No session records
+                    yet
                   </div>
                 </div>
               ) : (
@@ -3666,9 +4111,8 @@ export default function OTTracker() {
                             COLORS.card,
                           borderRadius: 14,
                           marginBottom: 12,
-                          border: `1px solid ${COLORS.border}`,
-                          boxShadow:
-                            "0 2px 8px rgba(0,0,0,.05)",
+                          border:
+                            `1px solid ${COLORS.border}`,
                           overflow:
                             "hidden",
                         }}
@@ -3677,7 +4121,8 @@ export default function OTTracker() {
                           style={{
                             padding:
                               "14px 18px",
-                            borderBottom: `1px solid ${COLORS.border}`,
+                            borderBottom:
+                              `1px solid ${COLORS.border}`,
                             display:
                               "flex",
                             justifyContent:
@@ -3708,7 +4153,9 @@ export default function OTTracker() {
                                 marginTop: 2,
                               }}
                             >
-                              {total}{" "}
+                              {
+                                total
+                              }{" "}
                               patients
                               recorded
                             </div>
@@ -3750,7 +4197,8 @@ export default function OTTracker() {
                                 fontSize: 12,
                               }}
                             >
-                              ❌ {ns} Not Seen
+                              ❌ {ns} Not
+                              Seen
                             </span>
                           </div>
                         </div>
@@ -3773,165 +4221,93 @@ export default function OTTracker() {
                                   p.id
                                 ]
                             )
-                            .map((p) => {
-                              const r =
-                                drec[
-                                  p.id
-                                ];
-
-                              const catStyle =
-                                CAT_COLORS[
-                                  p.category
-                                ] ||
-                                {};
-
-                              return (
-                                <div
-                                  key={
+                            .map(
+                              (p) => {
+                                const r =
+                                  drec[
                                     p.id
-                                  }
-                                  style={{
-                                    display:
-                                      "flex",
-                                    alignItems:
-                                      "center",
-                                    gap: 10,
-                                    flexWrap:
-                                      "wrap",
-                                  }}
-                                >
-                                  <span
+                                  ];
+
+                                return (
+                                  <div
+                                    key={
+                                      p.id
+                                    }
                                     style={{
-                                      background:
-                                        catStyle.bg,
-                                      color:
-                                        catStyle.color,
-                                      border: `1px solid ${catStyle.border}`,
-                                      padding:
-                                        "2px 8px",
-                                      borderRadius:
-                                        6,
-                                      fontSize:
-                                        10,
-                                      fontWeight:
-                                        800,
+                                      display:
+                                        "flex",
+                                      alignItems:
+                                        "center",
+                                      gap: 10,
+                                      flexWrap:
+                                        "wrap",
                                     }}
                                   >
-                                    {
-                                      p.category
-                                    }
-                                  </span>
-
-                                  <span
-                                    style={{
-                                      fontWeight:
-                                        600,
-                                      fontSize:
-                                        13,
-                                    }}
-                                  >
-                                    {
-                                      p.name
-                                    }
-                                  </span>
-
-                                  <span
-                                    style={{
-                                      fontSize:
-                                        11,
-                                      color:
-                                        COLORS.muted,
-                                    }}
-                                  >
-                                    IP:{" "}
-                                    {
-                                      p.ipNo
-                                    }
-                                  </span>
-
-                                  <span
-                                    style={{
-                                      fontSize:
-                                        11,
-                                      color:
-                                        COLORS.muted,
-                                    }}
-                                  >
-                                    ·{" "}
-                                    {
-                                      p.diagnosis
-                                    }
-                                  </span>
-
-                                  {authorized && (
-                                    <button
-                                      className="btn"
-                                      onClick={() => {
-                                        setSessionDate(
-                                          d
-                                        );
-                                        setView(
-                                          "today"
-                                        );
-                                        setExpandedId(
-                                          p.id
-                                        );
-                                      }}
+                                    <span
                                       style={{
-                                        background:
-                                          "#ebedff",
-                                        border:
-                                          "1px solid #4e6ef244",
-                                        color:
-                                          "#4e6ef2",
-                                        padding:
-                                          "2px 10px",
-                                        borderRadius:
-                                          7,
-                                        fontWeight:
-                                          700,
-                                        fontSize:
-                                          11,
-                                        cursor:
-                                          "pointer",
+                                        fontWeight: 600,
+                                        fontSize: 13,
                                       }}
                                     >
-                                      ✏️ Edit
-                                    </button>
-                                  )}
+                                      {p.name}
+                                    </span>
 
-                                  <span
-                                    style={{
-                                      marginLeft:
-                                        "auto",
-                                      background:
-                                        r.seen
-                                          ? "#e6faf7"
-                                          : "#fdeef1",
-                                      color:
-                                        r.seen
-                                          ? "#00c9a7"
-                                          : "#e63757",
-                                      padding:
-                                        "2px 10px",
-                                      borderRadius:
-                                        7,
-                                      fontWeight:
-                                        700,
-                                      fontSize:
-                                        11,
-                                    }}
-                                  >
-                                    {r.seen
-                                      ? "✅ Seen"
-                                      : `❌ ${
-                                          r.reason ||
-                                          "Not Seen"
-                                        }`}
-                                  </span>
-                                </div>
-                              );
-                            })}
+                                    <span
+                                      style={{
+                                        fontSize: 11,
+                                        color:
+                                          COLORS.muted,
+                                      }}
+                                    >
+                                      IP:{" "}
+                                      {
+                                        p.ipNo
+                                      }
+                                    </span>
+
+                                    <span
+                                      style={{
+                                        fontSize: 11,
+                                        color:
+                                          COLORS.muted,
+                                      }}
+                                    >
+                                      ·{" "}
+                                      {
+                                        p.diagnosis
+                                      }
+                                    </span>
+
+                                    <span
+                                      style={{
+                                        marginLeft:
+                                          "auto",
+                                        background:
+                                          r.seen
+                                            ? "#e6faf7"
+                                            : "#fdeef1",
+                                        color:
+                                          r.seen
+                                            ? "#00c9a7"
+                                            : "#e63757",
+                                        padding:
+                                          "2px 10px",
+                                        borderRadius: 7,
+                                        fontWeight: 700,
+                                        fontSize: 11,
+                                      }}
+                                    >
+                                      {r.seen
+                                        ? "✅ Seen"
+                                        : `❌ ${
+                                            r.reason ||
+                                            "Not Seen"
+                                          }`}
+                                    </span>
+                                  </div>
+                                );
+                              }
+                            )}
                         </div>
                       </div>
                     );
@@ -3942,6 +4318,312 @@ export default function OTTracker() {
           )}
         </div>
       </div>
+
+      {/* =====================================================
+          ASSESSMENT MODAL
+      ===================================================== */}
+
+      {showAssessment &&
+        assessmentPatient && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              background:
+                "rgba(11,20,55,.55)",
+              zIndex: 10000,
+              display: "flex",
+              alignItems:
+                "center",
+              justifyContent:
+                "center",
+              padding: 20,
+            }}
+          >
+            <div
+              style={{
+                width: "100%",
+                maxWidth: 760,
+                maxHeight:
+                  "92vh",
+                overflowY:
+                  "auto",
+                background:
+                  "#fff",
+                borderRadius: 16,
+                boxShadow:
+                  "0 20px 60px rgba(0,0,0,.25)",
+              }}
+            >
+              {/* MODAL HEADER */}
+
+              <div
+                style={{
+                  position:
+                    "sticky",
+                  top: 0,
+                  zIndex: 2,
+                  background:
+                    "#fff",
+                  padding:
+                    "18px 20px",
+                  borderBottom:
+                    `1px solid ${COLORS.border}`,
+                  display:
+                    "flex",
+                  justifyContent:
+                    "space-between",
+                  alignItems:
+                    "center",
+                  gap: 10,
+                }}
+              >
+                <div>
+                  <div
+                    style={{
+                      fontSize: 17,
+                      fontWeight: 900,
+                      color:
+                        COLORS.sidebar,
+                    }}
+                  >
+                    📋{" "}
+                    {
+                      ASSESSMENT_SCALES.find(
+                        (s) =>
+                          s.id ===
+                          assessmentType
+                      )?.name
+                    }
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color:
+                        COLORS.muted,
+                      marginTop: 3,
+                    }}
+                  >
+                    Patient:{" "}
+                    <strong>
+                      {
+                        assessmentPatient.name
+                      }
+                    </strong>{" "}
+                    • IP:{" "}
+                    {
+                      assessmentPatient.ipNo
+                    }
+                  </div>
+                </div>
+
+                <button
+                  onClick={
+                    closeAssessment
+                  }
+                  style={{
+                    width: 34,
+                    height: 34,
+                    border: 0,
+                    borderRadius:
+                      8,
+                    background:
+                      "#f7fafc",
+                    color:
+                      COLORS.muted,
+                    fontSize: 18,
+                    cursor:
+                      "pointer",
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* MODAL BODY */}
+
+              <div
+                style={{
+                  padding: 20,
+                }}
+              >
+                <div
+                  style={{
+                    display:
+                      "grid",
+                    gridTemplateColumns:
+                      "1fr 1fr",
+                    gap: 12,
+                    marginBottom: 18,
+                  }}
+                >
+                  <div>
+                    <label
+                      style={
+                        labelStyle
+                      }
+                    >
+                      Assessment Date
+                    </label>
+
+                    <input
+                      type="date"
+                      value={
+                        assessmentDate
+                      }
+                      onChange={(
+                        e
+                      ) =>
+                        setAssessmentDate(
+                          e.target
+                            .value
+                        )
+                      }
+                      style={
+                        inputStyle
+                      }
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      style={
+                        labelStyle
+                      }
+                    >
+                      Entered By
+                    </label>
+
+                    <div
+                      style={{
+                        ...inputStyle,
+                        background:
+                          "#f7fafc",
+                        display:
+                          "flex",
+                        alignItems:
+                          "center",
+                      }}
+                    >
+                      {session.user.email}
+                    </div>
+                  </div>
+                </div>
+
+                <AssessmentForm
+                  type={
+                    assessmentType
+                  }
+                  data={
+                    assessmentData
+                  }
+                  setData={
+                    setAssessmentData
+                  }
+                />
+
+                <div
+                  style={{
+                    marginTop: 16,
+                  }}
+                >
+                  <label
+                    style={
+                      labelStyle
+                    }
+                  >
+                    Notes
+                  </label>
+
+                  <textarea
+                    value={
+                      assessmentData.notes ||
+                      ""
+                    }
+                    onChange={(e) =>
+                      setAssessmentData(
+                        (x) => ({
+                          ...x,
+                          notes:
+                            e.target
+                              .value,
+                        })
+                      )
+                    }
+                    placeholder="Additional assessment notes..."
+                    style={{
+                      ...inputStyle,
+                      minHeight: 80,
+                      resize:
+                        "vertical",
+                    }}
+                  />
+                </div>
+
+                {/* SAVE */}
+
+                <div
+                  style={{
+                    display:
+                      "flex",
+                    gap: 10,
+                    marginTop: 18,
+                  }}
+                >
+                  <button
+                    onClick={
+                      saveAssessment
+                    }
+                    disabled={
+                      saving
+                    }
+                    style={{
+                      flex: 1,
+                      border: 0,
+                      background:
+                        "#4e6ef2",
+                      color:
+                        "#fff",
+                      padding: 12,
+                      borderRadius: 10,
+                      fontWeight: 800,
+                      cursor:
+                        saving
+                          ? "wait"
+                          : "pointer",
+                    }}
+                  >
+                    {saving
+                      ? "Saving…"
+                      : "✓ Save Assessment"}
+                  </button>
+
+                  <button
+                    onClick={
+                      closeAssessment
+                    }
+                    style={{
+                      padding:
+                        "12px 22px",
+                      borderRadius: 10,
+                      border: `1.5px solid ${COLORS.border}`,
+                      background:
+                        "#f7fafc",
+                      color:
+                        COLORS.muted,
+                      fontWeight: 700,
+                      cursor:
+                        "pointer",
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
     </div>
   );
 }
