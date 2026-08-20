@@ -327,11 +327,12 @@ export default function OTTracker() {
   const [view, setView] = useState("today");
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
-  
-  const [assessmentRows, setAssessmentRows] = useState([]);
-  const [assessmentScale, setAssessmentScale] = useState("");
+
   const [showAssessment, setShowAssessment] = useState(false);
-  const [assessmentPatientId, setAssessmentPatientId] = useState(null);
+  const [assessmentPatient, setAssessmentPatient] = useState(null);
+  const [assessmentType, setAssessmentType] = useState("");
+  const [assessmentData, setAssessmentData] = useState({});
+  const [assessmentDate, setAssessmentDate] = useState(today());
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -425,6 +426,70 @@ if (assessmentError) throw assessmentError;
       cancelled = true;
     };
   }, [session]);
+const openAssessment = (patient, type) => {
+  setAssessmentPatient(patient);
+  setAssessmentType(type);
+  setAssessmentDate(sessionDate);
+  setAssessmentData({});
+  setShowAssessment(true);
+};
+
+const closeAssessment = () => {
+  setShowAssessment(false);
+  setAssessmentPatient(null);
+  setAssessmentType("");
+  setAssessmentData({});
+};
+
+const saveAssessment = async () => {
+  if (!assessmentPatient || !assessmentType) return;
+
+  setSaving(true);
+
+  try {
+    let totalScore = null;
+
+    if (assessmentType === "MRS") {
+      if (assessmentData.score === undefined || assessmentData.score === "") {
+        showToast("Please select an MRS score.", "warn");
+        setSaving(false);
+        return;
+      }
+
+      totalScore = Number(assessmentData.score);
+    }
+
+    const payload = {
+      patient_id: assessmentPatient.id,
+      assessment_type: assessmentType,
+      assessment_date: assessmentDate,
+      total_score: totalScore,
+      scores: assessmentData,
+      notes: assessmentData.notes || null,
+    };
+
+    const { data, error } = await supabase
+      .from("patient_assessments")
+      .insert(payload)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    setAssessmentRows((prev) => [data, ...prev]);
+
+    showToast(`${assessmentType} assessment saved successfully!`);
+    closeAssessment();
+  } catch (error) {
+    console.error(error);
+    showToast(
+      error.message || "Could not save assessment.",
+      "warn"
+    );
+  } finally {
+    setSaving(false);
+  }
+};
 
   const signOut = async () => {
     await supabase.auth.signOut();
