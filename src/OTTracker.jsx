@@ -892,6 +892,27 @@ const saveAssessment = async () => {
                           <div style={{display:"flex",gap:10,marginBottom:14,flexWrap:"wrap"}}>
                             {authorized && <button className="btn" onClick={()=>markSeen(p.id)} style={{background:rec.seen===true?"#00c9a7":"#e6faf7",border:"1.5px solid #00c9a7",color:rec.seen===true?"#fff":"#00c9a7",padding:"9px 22px",borderRadius:10,fontWeight:800,fontSize:13,cursor:"pointer"}}>✅ Seen</button>}
                             {authorized && <button className="btn" onClick={()=>markNotSeen(p.id,rec.reason||"")} style={{background:rec.seen===false?"#e63757":"#fdeef1",border:"1.5px solid #e63757",color:rec.seen===false?"#fff":"#e63757",padding:"9px 22px",borderRadius:10,fontWeight:800,fontSize:13,cursor:"pointer"}}>❌ Not Seen</button>}
+                           {authorized && (
+  <button
+    className="btn"
+    onClick={(e) => {
+      e.stopPropagation();
+      openAssessment(p, "MRS");
+    }}
+    style={{
+      background: "#e8f5e9",
+      border: "1.5px solid #43a047",
+      color: "#2e7d32",
+      padding: "9px 18px",
+      borderRadius: 10,
+      fontWeight: 700,
+      fontSize: 13,
+      cursor: "pointer",
+    }}
+  >
+    📋 MRS
+  </button>
+)}
                             {authorized && <button className="btn" onClick={()=>openEditForm(p)} style={{background:"#ebedff",border:"1.5px solid #4e6ef2",color:"#4e6ef2",padding:"9px 18px",borderRadius:10,fontWeight:700,fontSize:13,cursor:"pointer",marginLeft:"auto"}}>✏️ Edit</button>}
                             {role==="admin" && <button className="btn" onClick={()=>removePatient(p.id)} style={{background:"#f7fafc",border:`1.5px solid ${COLORS.border}`,color:COLORS.muted,padding:"9px 16px",borderRadius:10,fontWeight:700,fontSize:13,cursor:"pointer"}}>🗑 Remove</button>}
                           </div>
