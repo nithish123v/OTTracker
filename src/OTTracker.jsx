@@ -333,6 +333,7 @@ export default function OTTracker() {
   const [assessmentType, setAssessmentType] = useState("");
   const [assessmentData, setAssessmentData] = useState({});
   const [assessmentDate, setAssessmentDate] = useState(today());
+  const [assessmentRows, setAssessmentRows] = useState([]);
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
