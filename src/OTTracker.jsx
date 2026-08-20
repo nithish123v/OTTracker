@@ -2044,113 +2044,213 @@ export default function OTTracker() {
   };
 
   const exportExcel = () => {
-    const rows =
-      buildRows();
+  const wb = XLSX.utils.book_new();
 
-    const wb =
-      XLSX.utils.book_new();
+  // =========================================================
+  // SHEET 1 — SESSION RECORDS
+  // =========================================================
+  const rows = [
+    [
+      "Date",
+      "IP No",
+      "Reg No",
+      "Name",
+      "Category",
+      "Diagnosis",
+      "Consulting Dr",
+      "Room No",
+      "Status",
+      "Reason / Notes",
+    ],
+  ];
 
-    const ws =
-      XLSX.utils.aoa_to_sheet(
-        rows
-      );
+  Object.keys(records)
+    .sort()
+    .forEach((d) => {
+      patients.forEach((p) => {
+        const r = (records[d] || {})[p.id];
 
-    XLSX.utils.book_append_sheet(
-      wb,
-      ws,
-      "Session Records"
+        if (r) {
+          rows.push([
+            d,
+            p.ipNo,
+            p.regNo,
+            p.name,
+            p.category,
+            p.diagnosis,
+            p.consultingDr,
+            p.roomNo,
+            r.seen === true
+              ? "Seen"
+              : r.seen === false
+              ? "Not Seen"
+              : "Pending",
+            r.seen === false ? r.reason : r.notes || "",
+          ]);
+        }
+      });
+    });
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  ws["!cols"] = [
+    { wch: 12 },
+    { wch: 12 },
+    { wch: 10 },
+    { wch: 18 },
+    { wch: 14 },
+    { wch: 28 },
+    { wch: 18 },
+    { wch: 12 },
+    { wch: 12 },
+    { wch: 35 },
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws, "Session Records");
+
+
+  // =========================================================
+  // SHEET 2 — PATIENT LIST
+  // =========================================================
+  const patRows = [
+    [
+      "Name",
+      "IP No",
+      "Reg No",
+      "Category",
+      "Diagnosis",
+      "Consulting Dr",
+      "Room No",
+      "Date of Referral",
+    ],
+  ];
+
+  patients.forEach((p) =>
+    patRows.push([
+      p.name,
+      p.ipNo,
+      p.regNo,
+      p.category,
+      p.diagnosis,
+      p.consultingDr,
+      p.roomNo,
+      p.date,
+    ])
+  );
+
+  const ws2 = XLSX.utils.aoa_to_sheet(patRows);
+
+  ws2["!cols"] = [
+    { wch: 20 },
+    { wch: 12 },
+    { wch: 12 },
+    { wch: 16 },
+    { wch: 30 },
+    { wch: 18 },
+    { wch: 12 },
+    { wch: 16 },
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws2, "Patient List");
+
+
+  // =========================================================
+  // SHEET 3 — ASSESSMENT SCALES
+  // =========================================================
+
+  const assessmentRowsForExcel = [
+    [
+      "Assessment Date",
+      "IP No",
+      "Reg No",
+      "Patient Name",
+      "Category",
+      "Diagnosis",
+      "Assessment Scale",
+      "Total Score",
+      "Entered By",
+      "Scores / Data",
+      "Notes",
+    ],
+  ];
+
+  (assessmentRows || []).forEach((assessment) => {
+    const patient = patients.find(
+      (p) => String(p.id) === String(assessment.patient_id)
     );
 
-    const patRows = [
-      [
-        "Name",
-        "IP No",
-        "Reg No",
-        "Category",
-        "Diagnosis",
-        "Consulting Dr",
-        "Room No",
-        "Date of Referral",
-      ],
-    ];
+    if (!patient) return;
 
-    patients.forEach((p) =>
-      patRows.push([
-        p.name,
-        p.ipNo,
-        p.regNo,
-        p.category,
-        p.diagnosis,
-        p.consultingDr,
-        p.roomNo,
-        p.date,
-      ])
-    );
+    // Find the staff/user who entered it.
+    // Supports different column names in case your Supabase
+    // table uses one of these.
+    const enteredBy =
+      assessment.entered_by ||
+      assessment.created_by ||
+      assessment.user_id ||
+      assessment.staff_id ||
+      assessment.entered_by_email ||
+      "—";
 
-    const ws2 =
-      XLSX.utils.aoa_to_sheet(
-        patRows
-      );
+    // Convert the scores JSON into readable Excel text
+    let scoreData = "";
 
-    XLSX.utils.book_append_sheet(
-      wb,
-      ws2,
-      "Patient List"
-    );
-
-    const assessmentExport = [
-      [
-        "Assessment Date",
-        "Patient",
-        "IP No",
-        "Assessment",
-        "Total Score",
-        "Entered By",
-      ],
-    ];
-
-    assessmentRows.forEach(
-      (a) => {
-        const patient =
-          patients.find(
-            (p) =>
-              p.id ===
-              a.patient_id
-          );
-
-        assessmentExport.push([
-          a.assessment_date,
-          patient?.name || "",
-          patient?.ipNo || "",
-          a.assessment_type,
-          a.total_score,
-          a.entered_by_email ||
-            a.entered_by ||
-            "",
-        ]);
+    if (assessment.scores) {
+      try {
+        scoreData = Object.entries(assessment.scores)
+          .filter(([key]) => key !== "notes")
+          .map(([key, value]) => `${key}: ${value}`)
+          .join(" | ");
+      } catch {
+        scoreData = JSON.stringify(assessment.scores);
       }
-    );
+    }
 
-    const ws3 =
-      XLSX.utils.aoa_to_sheet(
-        assessmentExport
-      );
+    assessmentRowsForExcel.push([
+      assessment.assessment_date || "",
+      patient.ipNo || "",
+      patient.regNo || "",
+      patient.name || "",
+      patient.category || "",
+      patient.diagnosis || "",
+      assessment.assessment_type || "",
+      assessment.total_score ?? "",
+      enteredBy,
+      scoreData,
+      assessment.notes || "",
+    ]);
+  });
 
-    XLSX.utils.book_append_sheet(
-      wb,
-      ws3,
-      "Assessments"
-    );
+  const ws3 = XLSX.utils.aoa_to_sheet(assessmentRowsForExcel);
 
-    XLSX.writeFile(
-      wb,
-      `OT_records_${today()}.xlsx`
-    );
+  ws3["!cols"] = [
+    { wch: 16 }, // Date
+    { wch: 12 }, // IP
+    { wch: 12 }, // Reg
+    { wch: 20 }, // Name
+    { wch: 16 }, // Category
+    { wch: 30 }, // Diagnosis
+    { wch: 25 }, // Scale
+    { wch: 14 }, // Total score
+    { wch: 30 }, // Entered by
+    { wch: 60 }, // Scores
+    { wch: 35 }, // Notes
+  ];
 
-    showToast(
-      "Exported to Excel!"
-    );
-  };
+  XLSX.utils.book_append_sheet(wb, ws3, "Assessment Scales");
+
+
+  // =========================================================
+  // DOWNLOAD EXCEL
+  // =========================================================
+
+  XLSX.writeFile(
+    wb,
+    `OTTrack_Complete_Records_${today()}.xlsx`
+  );
+
+  showToast("Complete Excel exported successfully! 📊");
+};
 
   /* =====================================================
      FILTER
