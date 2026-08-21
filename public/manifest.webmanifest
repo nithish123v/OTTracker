@@ -1,0 +1,9 @@
+{
+  "name": "OTTrack",
+  "short_name": "OTTrack",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f0f4f8",
+  "theme_color": "#0b1437",
+  "icons": []
+}
