@@ -2352,6 +2352,39 @@ ws["!cols"] = [
     patients.length -
     seen -
     notSeen;
+    const cvaCount = patients.filter(
+  (p) => p.category === "CVA"
+).length;
+
+const haemorrhageCount = patients.filter(
+  (p) =>
+    p.category === "CVA" &&
+    p.strokeType === "Haemorrhage"
+).length;
+
+const infarctCount = patients.filter(
+  (p) =>
+    p.category === "CVA" &&
+    p.strokeType === "Infarct"
+).length;
+
+const occlusionCount = patients.filter(
+  (p) =>
+    p.category === "CVA" &&
+    p.strokeType === "Occlusion"
+).length;
+
+const tbiCount = patients.filter(
+  (p) => p.category === "TBI"
+).length;
+
+const departmentCount = patients.filter(
+  (p) => p.category === "Department"
+).length;
+
+const newIocCount = patients.filter(
+  (p) => p.category === "New IOC Cases"
+).length;
 
   const allDates =
     Object.keys(records)
@@ -3195,15 +3228,73 @@ body,
               >
                 {[
                   {
-                    label:
-                      "Total",
-                    val: patients.length,
-                    color:
-                      "#4e6ef2",
-                    bg:
-                      "#ebedff",
-                    icon: "📋",
-                  },
+  label: "Total",
+  val: patients.length,
+  color: "#4e6ef2",
+  bg: "#ebedff",
+  icon: "📋",
+
+ detail: (
+  <div
+    style={{
+      marginTop: 7,
+      fontSize: 10,
+      lineHeight: 1.4,
+      color: COLORS.muted,
+    }}
+    >
+      <div
+  style={{
+    fontWeight: 800,
+    color: "#2e7d32",
+    marginBottom: 1,
+  }}
+>
+  CVA: {cvaCount}
+</div>
+
+<div style={{ paddingLeft: 8 }}>
+  • Haemorrhage: {haemorrhageCount}
+</div>
+
+<div style={{ paddingLeft: 8 }}>
+  • Infarct: {infarctCount}
+</div>
+
+<div style={{ paddingLeft: 8 }}>
+  • Occlusion: {occlusionCount}
+</div>
+
+      <div
+        style={{
+          marginTop: 3,
+          fontWeight: 800,
+          color: "#e65100",
+        }}
+      >
+        TBI: {tbiCount}
+      </div>
+
+      <div
+        style={{
+          fontWeight: 800,
+          color: "#1565c0",
+        }}
+      >
+        Department: {departmentCount}
+      </div>
+
+      <div
+        style={{
+          fontWeight: 800,
+          color: "#6a1b9a",
+        }}
+      >
+        New IOC: {newIocCount}
+      </div>
+    </div>
+  ),
+},
                   {
                     label:
                       "Seen",
@@ -3243,15 +3334,14 @@ body,
                         s.label
                       }
                       style={{
-                        background:
-                          COLORS.card,
-                        borderRadius: 12,
-                        padding:
-                          "14px 16px",
-                        border: `1.5px solid ${s.color}22`,
-                        boxShadow:
-                          "0 2px 8px rgba(0,0,0,.05)",
-                      }}
+  background: COLORS.card,
+  borderRadius: 12,
+  padding: "14px 16px",
+  minHeight: 190,
+  border: `1.5px solid ${s.color}22`,
+  boxShadow:
+    "0 2px 8px rgba(0,0,0,.05)",
+}}
                     >
                       <div
                         style={{
@@ -3283,9 +3373,12 @@ body,
                             "uppercase",
                         }}
                       >
-                        {s.label}
-                      </div>
-                    </div>
+                       {s.label}
+</div>
+
+{s.detail}
+
+</div>
                   )
                 )}
               </div>
