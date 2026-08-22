@@ -140,6 +140,9 @@ const EMPTY_FORM = {
   category: "CVA",
   consultingDr: "",
   roomNo: "",
+  sessionTime: "",
+  location: "",
+  strokeType: "",
   date: today(),
 };
 
@@ -163,6 +166,9 @@ function patientFromDb(p) {
     category: p.category,
     consultingDr: p.consulting_dr || "",
     roomNo: p.room_no || "",
+    sessionTime: p.session_time || "",
+    location: p.location || "",
+    strokeType: p.stroke_type || "",
     date: p.referral_date || today(),
   };
 }
@@ -177,6 +183,9 @@ function patientToDb(p) {
     category: p.category,
     consulting_dr: p.consultingDr?.trim() || null,
     room_no: p.roomNo?.trim() || null,
+    session_time: p.sessionTime || null,
+    location: p.location || null,
+    stroke_type: p.strokeType || null,
     referral_date: p.date || null,
   };
 }
@@ -1801,24 +1810,26 @@ export default function OTTracker() {
     setShowAdd(true);
   };
 
-  const openEditForm = (p) => {
-    setEditingId(p.id);
+const openEditForm = (p) => {
+  setEditingId(p.id);
 
-    setForm({
-      name: p.name,
-      ipNo: p.ipNo,
-      regNo: p.regNo,
-      diagnosis: p.diagnosis,
-      category: p.category,
-      consultingDr:
-        p.consultingDr,
-      roomNo: p.roomNo,
-      date: p.date,
-    });
+  setForm({
+    name: p.name,
+    ipNo: p.ipNo,
+    regNo: p.regNo,
+    diagnosis: p.diagnosis,
+    category: p.category,
+    consultingDr: p.consultingDr,
+    roomNo: p.roomNo,
+    sessionTime: p.sessionTime || "",
+    location: p.location || "",
+    strokeType: p.strokeType || "",
+    date: p.date,
+  });
 
-    setShowAdd(true);
-    setExpandedId(null);
-  };
+  setShowAdd(true);
+  setExpandedId(null);
+};
 
   const closeForm = () => {
     setShowAdd(false);
@@ -2008,10 +2019,13 @@ export default function OTTracker() {
         "Name",
         "Category",
         "Diagnosis",
-        "Consulting Dr",
-        "Room No",
-        "Status",
-        "Reason / Notes",
+       "Consulting Dr",
+"Room No",
+"Session",
+"Location",
+"Stroke Type",
+"Status",
+"Reason / Notes",
       ],
     ];
 
@@ -2032,13 +2046,16 @@ export default function OTTracker() {
               p.name,
               p.category,
               p.diagnosis,
-              p.consultingDr,
-              p.roomNo,
-              r.seen === true
-                ? "Seen"
-                : r.seen === false
-                ? "Not Seen"
-                : "Pending",
+            p.consultingDr,
+p.roomNo,
+p.sessionTime || "",
+p.location || "",
+p.strokeType || "",
+r.seen === true
+  ? "Seen"
+  : r.seen === false
+  ? "Not Seen"
+  : "Pending",
               r.seen === false
                 ? r.reason
                 : r.notes || "",
@@ -2100,18 +2117,21 @@ export default function OTTracker() {
 
   const ws = XLSX.utils.aoa_to_sheet(rows);
 
-  ws["!cols"] = [
-    { wch: 12 },
-    { wch: 12 },
-    { wch: 10 },
-    { wch: 18 },
-    { wch: 14 },
-    { wch: 28 },
-    { wch: 18 },
-    { wch: 12 },
-    { wch: 12 },
-    { wch: 35 },
-  ];
+ws["!cols"] = [
+  { wch: 12 },
+  { wch: 12 },
+  { wch: 10 },
+  { wch: 18 },
+  { wch: 14 },
+  { wch: 28 },
+  { wch: 18 },
+  { wch: 12 },
+  { wch: 10 },
+  { wch: 12 },
+  { wch: 16 },
+  { wch: 12 },
+  { wch: 35 },
+];
 
   XLSX.utils.book_append_sheet(wb, ws, "Session Records");
 
@@ -2127,8 +2147,11 @@ export default function OTTracker() {
       "Category",
       "Diagnosis",
       "Consulting Dr",
-      "Room No",
-      "Date of Referral",
+"Room No",
+"Session",
+"Location",
+"Stroke Type",
+"Date of Referral",
     ],
   ];
 
@@ -2141,22 +2164,28 @@ export default function OTTracker() {
       p.diagnosis,
       p.consultingDr,
       p.roomNo,
+      p.sessionTime || "",
+      p.location || "",
+      p.strokeType || "",
       p.date,
     ])
   );
 
   const ws2 = XLSX.utils.aoa_to_sheet(patRows);
 
-  ws2["!cols"] = [
-    { wch: 20 },
-    { wch: 12 },
-    { wch: 12 },
-    { wch: 16 },
-    { wch: 30 },
-    { wch: 18 },
-    { wch: 12 },
-    { wch: 16 },
-  ];
+ ws2["!cols"] = [
+  { wch: 20 },
+  { wch: 12 },
+  { wch: 12 },
+  { wch: 16 },
+  { wch: 30 },
+  { wch: 18 },
+  { wch: 12 },
+  { wch: 10 },
+  { wch: 12 },
+  { wch: 16 },
+  { wch: 16 },
+];
 
   XLSX.utils.book_append_sheet(wb, ws2, "Patient List");
 
@@ -3304,41 +3333,47 @@ body,
                   >
                     {[
                       {
-                        key: "name",
-                        label:
-                          "Patient Name *",
-                        type: "text",
-                      },
-                      {
-                        key: "ipNo",
-                        label:
-                          "IP Number *",
-                        type: "text",
-                      },
-                      {
-                        key: "regNo",
-                        label:
-                          "Reg Number",
-                        type: "text",
-                      },
-                      {
-                        key: "consultingDr",
-                        label:
-                          "Consulting Doctor",
-                        type: "text",
-                      },
-                      {
-                        key: "roomNo",
-                        label:
-                          "Room / Bed No",
-                        type: "text",
-                      },
-                      {
-                        key: "date",
-                        label:
-                          "Date of Referral",
-                        type: "date",
-                      },
+    key: "name",
+    label: "Patient Name *",
+    type: "text",
+  },
+  {
+    key: "ipNo",
+    label: "IP Number *",
+    type: "text",
+  },
+  {
+    key: "regNo",
+    label: "Reg Number",
+    type: "text",
+  },
+  {
+    key: "consultingDr",
+    label: "Consulting Doctor",
+    type: "text",
+  },
+  {
+    key: "roomNo",
+    label: "Room / Bed No",
+    type: "text",
+  },
+  {
+    key: "sessionTime",
+    label: "Session",
+    type: "select",
+    options: ["AM", "PM"],
+  },
+  {
+    key: "location",
+    label: "Location",
+    type: "select",
+    options: ["Ward", "ICU"],
+  },
+  {
+    key: "date",
+    label: "Date of Referral",
+    type: "date",
+  },
                     ].map(
                       (f) => (
                         <div
@@ -3361,35 +3396,41 @@ body,
                             {f.label}
                           </label>
 
-                          <input
-                            type={
-                              f.type
-                            }
-                            value={
-                              form[
-                                f.key
-                              ]
-                            }
-                            onChange={(
-                              e
-                            ) =>
-                              setForm(
-                                (
-                                  x
-                                ) => ({
-                                  ...x,
-                                  [f.key]:
-                                    e
-                                      .target
-                                      .value,
-                                })
-                              )
-                            }
-                            style={
-                              inputStyle
-                            }
-                          />
-                        </div>
+                         {f.type === "select" ? (
+  <select
+    value={form[f.key] || ""}
+    onChange={(e) =>
+      setForm((x) => ({
+        ...x,
+        [f.key]: e.target.value,
+      }))
+    }
+    style={inputStyle}
+  >
+    <option value="">
+      Select {f.label}
+    </option>
+
+    {f.options.map((option) => (
+      <option key={option} value={option}>
+        {option}
+      </option>
+    ))}
+  </select>
+) : (
+  <input
+    type={f.type}
+    value={form[f.key] || ""}
+    onChange={(e) =>
+      setForm((x) => ({
+        ...x,
+        [f.key]: e.target.value,
+      }))
+    }
+    style={inputStyle}
+  />
+)}
+</div>
                       )
                     )}
 
@@ -3447,24 +3488,67 @@ body,
                       </select>
                     </div>
 
-                    <div
-                      style={{
-                        display:
-                          "flex",
-                        flexDirection:
-                          "column",
-                        gap: 4,
-                        gridColumn:
-                          "1/-1",
-                      }}
-                    >
-                      <label
-                        style={
-                          labelStyle
-                        }
-                      >
-                        Diagnosis *
-                      </label>
+                    {/* STROKE TYPE */}
+
+{(form.category === "CVA" ||
+  /stroke|cva/i.test(form.diagnosis || "")) && (
+  <div
+    style={{
+      display: "flex",
+      flexDirection: "column",
+      gap: 4,
+    }}
+  >
+    <label style={labelStyle}>
+      Stroke Type
+    </label>
+
+    <select
+      value={form.strokeType || ""}
+      onChange={(e) =>
+        setForm((x) => ({
+          ...x,
+          strokeType: e.target.value,
+        }))
+      }
+      style={inputStyle}
+    >
+      <option value="">
+        Select Stroke Type
+      </option>
+      <option value="Haemorrhage">
+        Haemorrhage
+      </option>
+      <option value="Occlusion">
+        Occlusion
+      </option>
+      <option value="Infarct">
+        Infarct
+      </option>
+    </select>
+  </div>
+)}
+
+{/* DIAGNOSIS */}
+
+<div
+  style={{
+    display:
+      "flex",
+    flexDirection:
+      "column",
+    gap: 4,
+    gridColumn:
+      "1/-1",
+  }}
+>
+  <label
+    style={
+      labelStyle
+    }
+  >
+    Diagnosis *
+  </label>
 
                       <input
                         type="text"
@@ -3814,6 +3898,62 @@ body,
                                         }
                                       </span>
                                     ) : null
+                                                               )}
+                              </div>
+
+                              {/* SESSION / LOCATION / STROKE TYPE */}
+
+                              <div
+                                style={{
+                                  display: "flex",
+                                  flexWrap: "wrap",
+                                  gap: 6,
+                                  marginTop: 6,
+                                }}
+                              >
+                                {p.sessionTime && (
+                                  <span
+                                    style={{
+                                      fontSize: 10,
+                                      background: "#eef2ff",
+                                      color: "#4e6ef2",
+                                      padding: "3px 8px",
+                                      borderRadius: 6,
+                                      fontWeight: 700,
+                                    }}
+                                  >
+                                    🕐 {p.sessionTime}
+                                  </span>
+                                )}
+
+                                {p.location && (
+                                  <span
+                                    style={{
+                                      fontSize: 10,
+                                      background: "#e6faf7",
+                                      color: "#008f78",
+                                      padding: "3px 8px",
+                                      borderRadius: 6,
+                                      fontWeight: 700,
+                                    }}
+                                  >
+                                    🏥 {p.location}
+                                  </span>
+                                )}
+
+                                {p.strokeType && (
+                                  <span
+                                    style={{
+                                      fontSize: 10,
+                                      background: "#fff3e0",
+                                      color: "#e65100",
+                                      padding: "3px 8px",
+                                      borderRadius: 6,
+                                      fontWeight: 700,
+                                    }}
+                                  >
+                                    🧠 {p.strokeType}
+                                  </span>
                                 )}
                               </div>
                             </div>
@@ -4661,7 +4801,50 @@ body,
                                         p.diagnosis
                                       }
                                     </span>
+{p.sessionTime && (
+  <span
+    style={{
+      fontSize: 10,
+      background: "#eef2ff",
+      color: "#4e6ef2",
+      padding: "3px 8px",
+      borderRadius: 6,
+      fontWeight: 700,
+    }}
+  >
+    🕐 {p.sessionTime}
+  </span>
+)}
 
+{p.location && (
+  <span
+    style={{
+      fontSize: 10,
+      background: "#e6faf7",
+      color: "#008f78",
+      padding: "3px 8px",
+      borderRadius: 6,
+      fontWeight: 700,
+    }}
+  >
+    🏥 {p.location}
+  </span>
+)}
+
+{p.strokeType && (
+  <span
+    style={{
+      fontSize: 10,
+      background: "#fff3e0",
+      color: "#e65100",
+      padding: "3px 8px",
+      borderRadius: 6,
+      fontWeight: 700,
+    }}
+  >
+    🧠 {p.strokeType}
+  </span>
+)}
                                     <span
                                       style={{
                                         marginLeft:
