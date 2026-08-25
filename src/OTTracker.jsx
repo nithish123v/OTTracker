@@ -143,9 +143,11 @@ const EMPTY_FORM = {
   sessionTime: "",
   location: "",
   strokeType: "",
+  isActive: true,
+  admissionDate: "",
+  dischargeDate: "",
   date: today(),
 };
-
 const emptyRecord = () => ({
   seen: null,
   reason: "",
@@ -169,6 +171,9 @@ function patientFromDb(p) {
     sessionTime: p.session_time || "",
     location: p.location || "",
     strokeType: p.stroke_type || "",
+    isActive: p.is_active ?? true,
+admissionDate: p.admission_date || "",
+dischargeDate: p.discharge_date || "",
     date: p.referral_date || today(),
   };
 }
@@ -186,6 +191,9 @@ function patientToDb(p) {
     session_time: p.sessionTime || null,
     location: p.location || null,
     stroke_type: p.strokeType || null,
+    is_active: p.isActive ?? true,
+admission_date: p.admissionDate || null,
+discharge_date: p.dischargeDate || null,
     referral_date: p.date || null,
   };
 }
@@ -1146,6 +1154,9 @@ export default function OTTracker() {
   const [saving, setSaving] =
     useState(false);
 
+  const [mobileMenuOpen, setMobileMenuOpen] =
+    useState(false);
+
   /* =====================================================
      ASSESSMENT STATE
   ===================================================== */
@@ -1694,6 +1705,11 @@ export default function OTTracker() {
     await supabase.auth.signOut();
   };
 
+  const selectView = (nextView) => {
+    setView(nextView);
+    setMobileMenuOpen(false);
+  };
+
   /* =====================================================
      SESSION RECORDS
   ===================================================== */
@@ -1823,8 +1839,11 @@ const openEditForm = (p) => {
     roomNo: p.roomNo,
     sessionTime: p.sessionTime || "",
     location: p.location || "",
-    strokeType: p.strokeType || "",
-    date: p.date,
+   strokeType: p.strokeType || "",
+isActive: p.isActive ?? true,
+admissionDate: p.admissionDate || "",
+dischargeDate: p.dischargeDate || "",
+date: p.date,
   });
 
   setShowAdd(true);
@@ -2529,6 +2548,12 @@ body,
   min-width: 0;
 }
 
+.ot-mobile-header,
+.ot-mobile-menu,
+.ot-mobile-menu-backdrop {
+  display: none;
+}
+
 @media (max-width: 700px) {
 
   html,
@@ -2547,7 +2572,6 @@ body,
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
-    overflow-x: hidden !important;
   }
 
   /* =========================================
@@ -2561,7 +2585,6 @@ body,
     max-width: 100vw !important;
     min-width: 0 !important;
     min-height: 100vh !important;
-    overflow-x: hidden !important;
   }
 
   /* =========================================
@@ -2575,37 +2598,103 @@ body,
     height: auto !important;
     min-height: 0 !important;
 
+    display: block !important;
+    position: relative !important;
+    padding: calc(10px + env(safe-area-inset-top)) 12px 10px !important;
+    overflow: visible !important;
+    flex-shrink: 0 !important;
+  }
+
+  .ot-desktop-brand,
+  .ot-desktop-nav-item,
+  .ot-account-controls {
+    display: none !important;
+  }
+
+  .ot-mobile-header {
     display: flex !important;
-    flex-direction: row !important;
-    align-items: center !important;
-
-    padding: 10px 12px !important;
-
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-
-    flex-shrink: 0 !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
   }
 
-  /* Logo area */
-
-  .ot-sidebar > div:first-child {
-    padding: 0 12px 0 0 !important;
-    flex-shrink: 0 !important;
+  .ot-mobile-brand {
+    min-width: 0;
+    color: #fff;
+    font-size: 18px;
+    font-weight: 900;
   }
 
-  /* Sidebar navigation buttons */
+  .ot-mobile-menu-button {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    border: 1px solid #2d3a67;
+    border-radius: 10px;
+    background: #16204b;
+    color: #fff;
+    font-size: 25px;
+    line-height: 1;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
 
-  .ot-sidebar > button {
-    width: auto !important;
-    min-width: max-content !important;
+  .ot-mobile-menu-backdrop {
+    display: block !important;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: transparent;
+  }
 
-    padding: 8px 12px !important;
-    margin: 0 !important;
+  .ot-mobile-menu {
+    display: flex !important;
+    position: absolute;
+    top: calc(100% - 6px);
+    right: 12px;
+    z-index: 1001;
+    width: min(300px, calc(100vw - 24px));
+    min-width: 0;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px;
+    border: 1px solid #2d3a67;
+    border-radius: 12px;
+    background: #0b1437;
+    box-shadow: 0 12px 30px rgba(0,0,0,.28);
+  }
 
-    border-radius: 8px !important;
+  .ot-mobile-menu-item {
+    width: 100%;
+    min-height: 44px;
+    border: 0;
+    border-radius: 8px;
+    padding: 10px 12px;
+    background: transparent;
+    color: #fff;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
 
-    flex-shrink: 0 !important;
+  .ot-mobile-menu-item:active {
+    background: #16204b;
+  }
+
+  .ot-mobile-account {
+    min-width: 0;
+    margin: 4px 4px;
+    padding: 10px 8px;
+    border-top: 1px solid #2d3a67;
+    border-bottom: 1px solid #2d3a67;
+    color: #a0aec0;
+    font-size: 11px;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
   }
 
   /* =========================================
@@ -2622,7 +2711,6 @@ body,
     padding: 14px !important;
     margin: 0 !important;
 
-    overflow-x: hidden !important;
     overflow-y: visible !important;
   }
 
@@ -2685,19 +2773,7 @@ body,
      ADD PATIENT FORM
   ========================================= */
 
-  .ot-main-content div[style*="animation"] {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-
-    padding: 14px !important;
-
-    overflow: hidden !important;
-  }
-
-  /* Form grid becomes one column */
-
-  .ot-main-content div[style*="gridTemplateColumns"] {
+  .ot-patient-form-grid {
     grid-template-columns: minmax(0, 1fr) !important;
     width: 100% !important;
     min-width: 0 !important;
@@ -2716,7 +2792,8 @@ body,
     min-width: 0;
   }
 
-  .ot-main-content span {
+  .ot-main-content .ot-user-text,
+  .ot-main-content .ot-patient-text {
     overflow-wrap: anywhere;
   }
 
@@ -2724,7 +2801,7 @@ body,
      MOBILE STATS
   ========================================= */
 
-  .ot-main-content div[style*="repeat(4"] {
+  .ot-stats-grid {
     grid-template-columns:
       repeat(2, minmax(0, 1fr)) !important;
 
@@ -2738,8 +2815,76 @@ body,
      PREVENT HORIZONTAL OVERFLOW
   ========================================= */
 
-  .ot-main-content * {
-    max-width: 100%;
+  .ot-stats-grid > div {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .ot-patient-card-header {
+    grid-template-columns: minmax(0, 1fr) !important;
+    align-items: start !important;
+  }
+
+  .ot-patient-card-header > div {
+    min-width: 0;
+  }
+
+  .ot-patient-status {
+    align-items: flex-start !important;
+  }
+
+  .ot-history-header {
+    flex-wrap: wrap !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .ot-history-badges {
+    flex-wrap: wrap !important;
+  }
+
+  .ot-assessment-overlay {
+    align-items: flex-start !important;
+    padding: 12px !important;
+    overflow-y: auto;
+  }
+
+  .ot-assessment-modal {
+    width: min(100%, 760px) !important;
+    max-height: calc(100dvh - 24px) !important;
+    min-width: 0;
+  }
+
+  .ot-assessment-header {
+    align-items: flex-start !important;
+    padding: 14px !important;
+  }
+
+  .ot-assessment-header-content {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .ot-assessment-body {
+    padding: 14px !important;
+    min-width: 0;
+  }
+
+  .ot-assessment-meta {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .ot-assessment-email {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .ot-assessment-footer {
+    flex-wrap: wrap !important;
+  }
+
+  .ot-assessment-footer button {
+    min-width: 0;
   }
 
 }
@@ -2751,7 +2896,7 @@ body,
 @media (max-width: 430px) {
 
   .ot-sidebar {
-    padding: 8px !important;
+    padding: calc(8px + env(safe-area-inset-top)) 8px 8px !important;
   }
 
   .ot-main-content {
@@ -2764,6 +2909,18 @@ body,
 
   .ot-main-content .btn {
     font-size: 12px !important;
+  }
+
+  .ot-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .ot-history-badges {
+    width: 100%;
+  }
+
+  .ot-assessment-footer button {
+    width: 100%;
   }
 
 }
@@ -2830,7 +2987,6 @@ body,
     minHeight: "100vh",
     width: "100%",
     maxWidth: "100vw",
-    overflowX: "hidden",
   }}
 >
   {/* =================================================
@@ -2848,7 +3004,67 @@ body,
       padding: "24px 0",
     }}
   >
+          <div className="ot-mobile-header">
+            <div className="ot-mobile-brand">
+              🧠 <span style={{ color: "#4e6ef2" }}>OT</span>Track
+            </div>
+
+            <button
+              className="ot-mobile-menu-button"
+              type="button"
+              aria-label="Open navigation menu"
+              aria-expanded={mobileMenuOpen}
+              onClick={() => setMobileMenuOpen((open) => !open)}
+            >
+              ⋮
+            </button>
+          </div>
+
+          {mobileMenuOpen && (
+            <>
+              <div
+                className="ot-mobile-menu-backdrop"
+                onClick={() => setMobileMenuOpen(false)}
+              />
+
+              <div className="ot-mobile-menu">
+                <button
+                  className="ot-mobile-menu-item"
+                  type="button"
+                  onClick={() => selectView("today")}
+                >
+                  📋 Today's OT Cases
+                </button>
+
+                <button
+                  className="ot-mobile-menu-item"
+                  type="button"
+                  onClick={() => selectView("history")}
+                >
+                  📅 Session History
+                </button>
+
+                <div className="ot-mobile-account">
+                  <div>👤 {session.user.email}</div>
+                  <div>Role: {role}</div>
+                </div>
+
+                <button
+                  className="ot-mobile-menu-item"
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    signOut();
+                  }}
+                >
+                  🚪 Sign Out
+                </button>
+              </div>
+            </>
+          )}
+
           <div
+            className="ot-desktop-brand"
             style={{
               padding:
                 "0 18px 24px",
@@ -2900,9 +3116,10 @@ body,
             },
           ].map((item) => (
             <button
+              className="ot-desktop-nav-item"
               key={item.id}
               onClick={() =>
-                setView(item.id)
+                selectView(item.id)
               }
               style={{
                 display: "flex",
@@ -2938,12 +3155,14 @@ body,
           ))}
 
           <div
+            className="ot-account-controls"
             style={{
               marginTop: "auto",
               padding: 18,
             }}
           >
             <div
+              className="ot-account-email"
               style={{
                 color: "#718096",
                 fontSize: 10,
@@ -2959,6 +3178,7 @@ body,
             </div>
 
             <div
+              className="ot-account-role"
               style={{
                 color: "#4a5568",
                 fontSize: 10,
@@ -2969,6 +3189,7 @@ body,
             </div>
 
             <button
+              className="ot-signout-button"
               onClick={signOut}
               style={{
                 width: "100%",
@@ -3217,6 +3438,7 @@ body,
               {/* STAT CARDS */}
 
               <div
+                className="ot-stats-grid"
                 style={{
                   display:
                     "grid",
@@ -3415,268 +3637,504 @@ body,
                       : "🧠 New OT Patient"}
                   </div>
 
-                  <div
-                    style={{
-                      display:
-                        "grid",
-                      gridTemplateColumns:
-                        "repeat(auto-fit,minmax(160px,1fr))",
-                      gap: 10,
-                    }}
-                  >
-                    {[
-                      {
-    key: "name",
-    label: "Patient Name *",
-    type: "text",
-  },
-  {
-    key: "ipNo",
-    label: "IP Number *",
-    type: "text",
-  },
-  {
-    key: "regNo",
-    label: "Reg Number",
-    type: "text",
-  },
-  {
-    key: "consultingDr",
-    label: "Consulting Doctor",
-    type: "text",
-  },
-  {
-    key: "roomNo",
-    label: "Room / Bed No",
-    type: "text",
-  },
-  {
-    key: "sessionTime",
-    label: "Session",
-    type: "select",
-    options: ["AM", "PM"],
-  },
-  {
-    key: "location",
-    label: "Location",
-    type: "select",
-    options: ["Ward", "ICU"],
-  },
-  {
-    key: "date",
-    label: "Date of Referral",
-    type: "date",
-  },
-                    ].map(
-                      (f) => (
-                        <div
-                          key={
-                            f.key
-                          }
-                          style={{
-                            display:
-                              "flex",
-                            flexDirection:
-                              "column",
-                            gap: 4,
-                          }}
-                        >
-                          <label
-                            style={
-                              labelStyle
-                            }
-                          >
-                            {f.label}
-                          </label>
+<div
+  style={{
+    display: "flex",
+    flexDirection: "column",
+    gap: 18,
+  }}
+>
+  {/* =========================
+      PATIENT
+  ========================= */}
+  <div>
+    <div
+      style={{
+        fontSize: 10,
+        fontWeight: 900,
+        color: COLORS.sidebar,
+        textTransform: "uppercase",
+        letterSpacing: 1,
+        marginBottom: 9,
+      }}
+    >
+      Patient
+    </div>
 
-                         {f.type === "select" ? (
-  <select
-    value={form[f.key] || ""}
-    onChange={(e) =>
-      setForm((x) => ({
-        ...x,
-        [f.key]: e.target.value,
-      }))
-    }
-    style={inputStyle}
-  >
-    <option value="">
-      Select {f.label}
-    </option>
+    <div
+      className="ot-patient-form-grid"
+      style={{
+        display: "grid",
+        gridTemplateColumns:
+          "repeat(auto-fit,minmax(180px,1fr))",
+        gap: 10,
+      }}
+    >
+      {[
+        {
+          key: "name",
+          label: "Patient Name *",
+          type: "text",
+        },
+        {
+          key: "ipNo",
+          label: "IP Number *",
+          type: "text",
+        },
+        {
+          key: "regNo",
+          label: "Reg Number",
+          type: "text",
+        },
+      ].map((f) => (
+        <div
+          key={f.key}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 4,
+          }}
+        >
+          <label style={labelStyle}>
+            {f.label}
+          </label>
 
-    {f.options.map((option) => (
-      <option key={option} value={option}>
-        {option}
-      </option>
-    ))}
-  </select>
-) : (
+          <input
+            type={f.type}
+            value={form[f.key] || ""}
+            onChange={(e) =>
+              setForm((x) => ({
+                ...x,
+                [f.key]: e.target.value,
+              }))
+            }
+            style={inputStyle}
+          />
+        </div>
+      ))}
+    </div>
+  </div>
+
+  {/* =========================
+      CLINICAL
+  ========================= */}
+  <div>
+    <div
+      style={{
+        fontSize: 10,
+        fontWeight: 900,
+        color: COLORS.sidebar,
+        textTransform: "uppercase",
+        letterSpacing: 1,
+        marginBottom: 9,
+      }}
+    >
+      Clinical
+    </div>
+
+    <div
+      className="ot-patient-form-grid"
+      style={{
+        display: "grid",
+        gridTemplateColumns:
+          "repeat(auto-fit,minmax(180px,1fr))",
+        gap: 10,
+      }}
+    >
+      {/* Category */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 4,
+        }}
+      >
+        <label style={labelStyle}>
+          Category
+        </label>
+
+        <select
+          value={form.category}
+          onChange={(e) =>
+            setForm((x) => ({
+              ...x,
+              category: e.target.value,
+              strokeType:
+                e.target.value === "CVA"
+                  ? x.strokeType
+                  : "",
+            }))
+          }
+          style={inputStyle}
+        >
+          {CATEGORIES.filter(
+            (c) => c !== "All"
+          ).map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Stroke Type */}
+      {(form.category === "CVA" ||
+        /stroke|cva/i.test(
+          form.diagnosis || ""
+        )) && (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 4,
+          }}
+        >
+          <label style={labelStyle}>
+            Stroke Type
+          </label>
+
+          <select
+            value={form.strokeType || ""}
+            onChange={(e) =>
+              setForm((x) => ({
+                ...x,
+                strokeType:
+                  e.target.value,
+              }))
+            }
+            style={inputStyle}
+          >
+            <option value="">
+              Select Stroke Type
+            </option>
+            <option value="Haemorrhage">
+              Haemorrhage
+            </option>
+            <option value="Occlusion">
+              Occlusion
+            </option>
+            <option value="Infarct">
+              Infarct
+            </option>
+          </select>
+        </div>
+      )}
+      {/* Admission Date */}
+<div
+  style={{
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
+  }}
+>
+  <label style={labelStyle}>
+    Admission Date
+  </label>
+
   <input
-    type={f.type}
-    value={form[f.key] || ""}
+    type="date"
+    value={form.admissionDate || ""}
     onChange={(e) =>
       setForm((x) => ({
         ...x,
-        [f.key]: e.target.value,
+        admissionDate: e.target.value,
       }))
     }
     style={inputStyle}
   />
-)}
 </div>
-                      )
-                    )}
 
-                    <div
-                      style={{
-                        display:
-                          "flex",
-                        flexDirection:
-                          "column",
-                        gap: 4,
-                      }}
-                    >
-                      <label
-                        style={
-                          labelStyle
-                        }
-                      >
-                        Category
-                      </label>
-
-                      <select
-                        value={
-                          form.category
-                        }
-                        onChange={(
-                          e
-                        ) =>
-                          setForm(
-                            (x) => ({
-                              ...x,
-                              category:
-                                e
-                                  .target
-                                  .value,
-                            })
-                          )
-                        }
-                        style={
-                          inputStyle
-                        }
-                      >
-                        {CATEGORIES.filter(
-                          (c) =>
-                            c !==
-                            "All"
-                        ).map(
-                          (c) => (
-                            <option
-                              key={c}
-                            >
-                              {c}
-                            </option>
-                          )
-                        )}
-                      </select>
-                    </div>
-
-                    {/* STROKE TYPE */}
-
-{(form.category === "CVA" ||
-  /stroke|cva/i.test(form.diagnosis || "")) && (
-  <div
-    style={{
-      display: "flex",
-      flexDirection: "column",
-      gap: 4,
-    }}
-  >
-    <label style={labelStyle}>
-      Stroke Type
-    </label>
-
-    <select
-      value={form.strokeType || ""}
-      onChange={(e) =>
-        setForm((x) => ({
-          ...x,
-          strokeType: e.target.value,
-        }))
-      }
-      style={inputStyle}
-    >
-      <option value="">
-        Select Stroke Type
-      </option>
-      <option value="Haemorrhage">
-        Haemorrhage
-      </option>
-      <option value="Occlusion">
-        Occlusion
-      </option>
-      <option value="Infarct">
-        Infarct
-      </option>
-    </select>
-  </div>
-)}
-
-{/* DIAGNOSIS */}
-
+{/* Discharge Date */}
 <div
   style={{
-    display:
-      "flex",
-    flexDirection:
-      "column",
+    display: "flex",
+    flexDirection: "column",
     gap: 4,
-    gridColumn:
-      "1/-1",
   }}
 >
-  <label
-    style={
-      labelStyle
-    }
-  >
-    Diagnosis *
+  <label style={labelStyle}>
+    Discharge Date
   </label>
 
-                      <input
-                        type="text"
-                        value={
-                          form.diagnosis
-                        }
-                        onChange={(
-                          e
-                        ) =>
-                          setForm(
-                            (x) => ({
-                              ...x,
-                              diagnosis:
-                                e
-                                  .target
-                                  .value,
-                            })
-                          )
-                        }
-                        placeholder="Enter primary diagnosis..."
-                        style={
-                          inputStyle
-                        }
-                      />
-                    </div>
-                  </div>
+  <input
+    type="date"
+    value={form.dischargeDate || ""}
+    onChange={(e) =>
+      setForm((x) => ({
+        ...x,
+        dischargeDate: e.target.value,
+      }))
+    }
+    style={inputStyle}
+  />
+</div>
 
-                  <div
-                    style={{
-                      display:
-                        "flex",
-                      gap: 10,
-                      marginTop: 14,
-                    }}
-                  >
+{/* Patient Status */}
+<div
+  style={{
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
+  }}
+>
+  <label style={labelStyle}>
+    Patient Status
+  </label>
+
+  <select
+    value={form.isActive === false ? "Inactive" : "Active"}
+    onChange={(e) =>
+      setForm((x) => ({
+        ...x,
+        isActive: e.target.value === "Active",
+      }))
+    }
+    style={inputStyle}
+  >
+    <option value="Active">Active</option>
+    <option value="Inactive">Inactive</option>
+  </select>
+</div>
+
+      {/* Diagnosis */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 4,
+          gridColumn: "1 / -1",
+        }}
+      >
+        <label style={labelStyle}>
+          Diagnosis *
+        </label>
+
+        <input
+          type="text"
+          value={form.diagnosis || ""}
+          onChange={(e) =>
+            setForm((x) => ({
+              ...x,
+              diagnosis: e.target.value,
+            }))
+          }
+          placeholder="Enter primary diagnosis..."
+          style={inputStyle}
+        />
+      </div>
+    </div>
+  </div>
+
+  {/* =========================
+      LOCATION
+  ========================= */}
+  <div>
+    <div
+      style={{
+        fontSize: 10,
+        fontWeight: 900,
+        color: COLORS.sidebar,
+        textTransform: "uppercase",
+        letterSpacing: 1,
+        marginBottom: 9,
+      }}
+    >
+      Location
+    </div>
+
+    <div
+      className="ot-patient-form-grid"
+      style={{
+        display: "grid",
+        gridTemplateColumns:
+          "repeat(auto-fit,minmax(180px,1fr))",
+        gap: 10,
+      }}
+    >
+      {/* Consulting Doctor */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 4,
+        }}
+      >
+        <label style={labelStyle}>
+          Consulting Doctor
+        </label>
+
+        <input
+          type="text"
+          value={form.consultingDr || ""}
+          onChange={(e) =>
+            setForm((x) => ({
+              ...x,
+              consultingDr:
+                e.target.value,
+            }))
+          }
+          style={inputStyle}
+        />
+      </div>
+
+      {/* Room */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 4,
+        }}
+      >
+        <label style={labelStyle}>
+          Room / Bed No
+        </label>
+
+        <input
+          type="text"
+          value={form.roomNo || ""}
+          onChange={(e) =>
+            setForm((x) => ({
+              ...x,
+              roomNo: e.target.value,
+            }))
+          }
+          style={inputStyle}
+        />
+      </div>
+    </div>
+  </div>
+
+  {/* =========================
+      SESSION
+  ========================= */}
+  <div>
+    <div
+      style={{
+        fontSize: 10,
+        fontWeight: 900,
+        color: COLORS.sidebar,
+        textTransform: "uppercase",
+        letterSpacing: 1,
+        marginBottom: 9,
+      }}
+    >
+      Session
+    </div>
+
+    <div
+      className="ot-patient-form-grid"
+      style={{
+        display: "grid",
+        gridTemplateColumns:
+          "repeat(auto-fit,minmax(180px,1fr))",
+        gap: 10,
+      }}
+    >
+      {/* AM / PM */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 4,
+        }}
+      >
+        <label style={labelStyle}>
+          Session
+        </label>
+
+        <select
+          value={form.sessionTime || ""}
+          onChange={(e) =>
+            setForm((x) => ({
+              ...x,
+              sessionTime:
+                e.target.value,
+            }))
+          }
+          style={inputStyle}
+        >
+          <option value="">
+            Select Session
+          </option>
+          <option value="AM">
+            AM
+          </option>
+          <option value="PM">
+            PM
+          </option>
+        </select>
+      </div>
+
+      {/* Ward / ICU */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 4,
+        }}
+      >
+        <label style={labelStyle}>
+          Location
+        </label>
+
+        <select
+          value={form.location || ""}
+          onChange={(e) =>
+            setForm((x) => ({
+              ...x,
+              location:
+                e.target.value,
+            }))
+          }
+          style={inputStyle}
+        >
+          <option value="">
+            Select Location
+          </option>
+          <option value="Ward">
+            Ward
+          </option>
+          <option value="ICU">
+            ICU
+          </option>
+        </select>
+      </div>
+
+      {/* Referral Date */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 4,
+        }}
+      >
+        <label style={labelStyle}>
+          Date of Referral
+        </label>
+
+        <input
+          type="date"
+          value={form.date || ""}
+          onChange={(e) =>
+            setForm((x) => ({
+              ...x,
+              date: e.target.value,
+            }))
+          }
+          style={inputStyle}
+        />
+      </div>
+    </div>
+  </div>
+</div>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 10,
+                    justifyContent: "flex-end",
+                    marginTop: 18,
+                  }}
+                >
                     <button
                       className="btn"
                       onClick={
@@ -3848,6 +4306,7 @@ body,
                         {/* PATIENT HEADER */}
 
                         <div
+                          className="ot-patient-card-header"
                           style={{
                             display:
                               "grid",
@@ -3886,11 +4345,12 @@ body,
                                 color:
                                   catStyle.color,
                                 border: `1px solid ${catStyle.border}`,
-                                padding:
-                                  "3px 10px",
-                                borderRadius: 7,
-                                fontSize: 10,
-                                fontWeight: 800,
+                                padding: "3px 9px",
+borderRadius: 7,
+fontSize: 10,
+fontWeight: 800,
+whiteSpace: "nowrap",
+flexShrink: 0,
                               }}
                             >
                               {p.category}
@@ -3901,25 +4361,29 @@ body,
                                 minWidth: 0,
                               }}
                             >
-                              <div
-                                style={{
-                                  fontWeight: 800,
-                                  fontSize: 14,
-                                }}
-                              >
-                                {p.name}
-                              </div>
+                             <div
+  className="ot-patient-text"
+  style={{
+    fontWeight: 900,
+    fontSize: 15,
+    color: COLORS.text,
+    lineHeight: 1.2,
+  }}
+>
+  {p.name}
+</div>
 
                               <div
-                                style={{
-                                  fontSize: 12,
-                                  color:
-                                    COLORS.muted,
-                                  marginTop: 2,
-                                }}
-                              >
-                                {p.diagnosis}
-                              </div>
+  className="ot-patient-text"
+  style={{
+    fontSize: 11,
+    color: COLORS.muted,
+    marginTop: 4,
+    fontWeight: 600,
+  }}
+>
+  {p.diagnosis}
+</div>
 
                               <div
                                 style={{
@@ -3964,13 +4428,10 @@ body,
                                           f.label
                                         }
                                         style={{
-                                          fontSize: 11,
-                                          background:
-                                            "#f0f4f8",
-                                          color:
-                                            "#4a5568",
-                                          padding:
-                                            "2px 8px",
+                                          fontSize: 10,
+background: "#f1f5f9",
+color: "#4a5568",
+padding: "3px 7px",
                                           borderRadius: 6,
                                           fontWeight: 600,
                                         }}
@@ -4047,12 +4508,61 @@ body,
                                   >
                                     🧠 {p.strokeType}
                                   </span>
-                                )}
+                                  )}
+                                  
+                                  {p.admissionDate && (
+  <span
+    style={{
+      background: "#eef2ff",
+      color: "#3730a3",
+      padding: "3px 8px",
+      borderRadius: 6,
+      fontWeight: 600,
+      fontSize: 10,
+    }}
+  >
+    📅 Admit: {p.admissionDate}
+  </span>
+)}
+
+{p.dischargeDate && (
+  <span
+    style={{
+      background: "#fff1f2",
+      color: "#be123c",
+      padding: "3px 8px",
+      borderRadius: 6,
+      fontWeight: 600,
+      fontSize: 10,
+    }}
+  >
+    🏁 Discharge: {p.dischargeDate}
+  </span>
+)}
+
+<span
+  style={{
+    fontSize: 10,
+    background: p.isActive
+      ? "#e6faf7"
+      : "#fdeef1",
+    color: p.isActive
+      ? "#008f78"
+      : "#e63757",
+    padding: "3px 8px",
+    borderRadius: 6,
+    fontWeight: 700,
+  }}
+>
+  {p.isActive ? "🟢 Active" : "🔴 Inactive"}
+</span>
+                          
                               </div>
                             </div>
                           </div>
 
                           <div
+                            className="ot-patient-status"
                             style={{
                               display:
                                 "flex",
@@ -4735,6 +5245,7 @@ body,
                         }}
                       >
                         <div
+                          className="ot-history-header"
                           style={{
                             padding:
                               "14px 18px",
@@ -4779,6 +5290,7 @@ body,
                           </div>
 
                           <div
+                            className="ot-history-badges"
                             style={{
                               display:
                                 "flex",
@@ -4986,6 +5498,7 @@ body,
       {showAssessment &&
         assessmentPatient && (
           <div
+            className="ot-assessment-overlay"
             style={{
               position: "fixed",
               inset: 0,
@@ -5001,6 +5514,7 @@ body,
             }}
           >
             <div
+              className="ot-assessment-modal"
               style={{
                 width: "100%",
                 maxWidth: 760,
@@ -5018,6 +5532,7 @@ body,
               {/* MODAL HEADER */}
 
               <div
+                className="ot-assessment-header"
                 style={{
                   position:
                     "sticky",
@@ -5038,7 +5553,7 @@ body,
                   gap: 10,
                 }}
               >
-                <div>
+                <div className="ot-assessment-header-content">
                   <div
                     style={{
                       fontSize: 17,
@@ -5104,11 +5619,13 @@ body,
               {/* MODAL BODY */}
 
               <div
+                className="ot-assessment-body"
                 style={{
                   padding: 20,
                 }}
               >
                 <div
+                  className="ot-assessment-meta"
                   style={{
                     display:
                       "grid",
@@ -5156,6 +5673,7 @@ body,
                     </label>
 
                     <div
+                      className="ot-assessment-email"
                       style={{
                         ...inputStyle,
                         background:
@@ -5224,6 +5742,7 @@ body,
                 {/* SAVE */}
 
                 <div
+                  className="ot-assessment-footer"
                   style={{
                     display:
                       "flex",
