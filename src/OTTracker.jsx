@@ -2,6 +2,12 @@ import React, { useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import { supabase } from "./lib/supabase";
 
+
+
+
+import { BiometricAuth } from "@aparajita/capacitor-biometric-auth";
+import { SecureStorage } from "@aparajita/capacitor-secure-storage";
+
 /* =========================================================
    COLORS
 ========================================================= */
@@ -226,6 +232,10 @@ function LoginScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
+  /* =====================================================
+     NORMAL EMAIL + PASSWORD LOGIN
+  ===================================================== */
+
   const signIn = async (e) => {
     e.preventDefault();
 
@@ -238,19 +248,143 @@ function LoginScreen() {
 
     setBusy(true);
 
-    const { error: authError } =
-      await supabase.auth.signInWithPassword({
+    try {
+      const {
+        data: authData,
+        error: authError,
+      } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-    setBusy(false);
+      if (authError) {
+        setError(authError.message);
+        return;
+      }
 
-    if (authError) {
-      setError(authError.message);
+      /* Save the Supabase session securely.
+         This is what biometric login will use later. */
+      if (authData?.session) {
+  await SecureStorage.set(
+    "ottracker_session",
+    JSON.stringify({
+      email,
+      password,
+    })
+  );
+}
+    } catch (error) {
+      console.error(error);
+
+      setError(
+        error?.message ||
+          "Unable to sign in."
+      );
+    } finally {
+      setBusy(false);
     }
   };
 
+  /* =====================================================
+     BIOMETRIC LOGIN
+  ===================================================== */
+
+  const biometricLogin = async () => {
+  setError("");
+  setBusy(true);
+
+  try {
+    // Check whether fingerprint / face is available
+    const { isAvailable } =
+      await BiometricAuth.checkBiometry();
+
+    if (!isAvailable) {
+      setError(
+        "Biometric authentication is not available on this device."
+      );
+      return;
+    }
+
+    // Ask Android for fingerprint / face
+    await BiometricAuth.authenticate({
+      reason: "Authenticate to open OTTracker",
+      androidTitle: "OTTracker Login",
+      androidSubtitle: "Use your fingerprint or face",
+      allowDeviceCredential: true,
+      androidConfirmationRequired: false,
+    });
+
+    // Get saved email + password
+    const savedLogin =
+      await SecureStorage.get("ottracker_session");
+
+    if (!savedLogin) {
+      setError(
+        "No saved biometric login. Please login with email and password first."
+      );
+      return;
+    }
+
+    // Convert saved data back to an object
+    const credentials =
+      typeof savedLogin === "string"
+        ? JSON.parse(savedLogin)
+        : savedLogin;
+
+    if (
+      !credentials?.email ||
+      !credentials?.password
+    ) {
+      setError(
+        "Saved biometric login is invalid. Please login with email and password again."
+      );
+
+      await SecureStorage.remove(
+        "ottracker_session"
+      );
+
+      return;
+    }
+
+    // Login to Supabase using saved credentials
+    const {
+      error: authError,
+    } =
+      await supabase.auth.signInWithPassword({
+        email: credentials.email,
+        password: credentials.password,
+      });
+
+    if (authError) {
+      console.error(authError);
+
+      setError(
+        "Biometric login failed. Please login with email and password again."
+      );
+
+      await SecureStorage.remove(
+        "ottracker_session"
+      );
+
+      return;
+    }
+
+    // Supabase onAuthStateChange will update
+    // the main OTTracker session automatically.
+  } catch (error) {
+    console.error(
+      "Biometric login error:",
+      error
+    );
+
+    setError(
+      error?.message ||
+        "Biometric authentication failed."
+    );
+  } finally {
+    setBusy(false);
+  }
+};
   return (
     <div
       style={{
@@ -260,7 +394,8 @@ function LoginScreen() {
         alignItems: "center",
         justifyContent: "center",
         padding: 20,
-        fontFamily: "'DM Sans','Segoe UI',sans-serif",
+        fontFamily:
+          "'DM Sans','Segoe UI',sans-serif",
       }}
     >
       <div
@@ -281,7 +416,9 @@ function LoginScreen() {
             marginBottom: 24,
           }}
         >
-          <div style={{ fontSize: 38 }}>🧠</div>
+          <div style={{ fontSize: 38 }}>
+            🧠
+          </div>
 
           <div
             style={{
@@ -290,7 +427,11 @@ function LoginScreen() {
               color: COLORS.sidebar,
             }}
           >
-            <span style={{ color: COLORS.accent }}>
+            <span
+              style={{
+                color: COLORS.accent,
+              }}
+            >
               OT
             </span>
             Track
@@ -303,12 +444,15 @@ function LoginScreen() {
               marginTop: 5,
             }}
           >
-            Occupational Therapy Patient Tracker
+            Occupational Therapy Patient
+            Tracker
           </div>
         </div>
 
         <form onSubmit={signIn}>
-          <label style={labelStyle}>Email</label>
+          <label style={labelStyle}>
+            Email
+          </label>
 
           <input
             type="email"
@@ -357,6 +501,8 @@ function LoginScreen() {
             </div>
           )}
 
+          {/* NORMAL LOGIN */}
+
           <button
             type="submit"
             disabled={busy}
@@ -378,6 +524,29 @@ function LoginScreen() {
               ? "Signing in…"
               : "Sign in"}
           </button>
+
+          {/* BIOMETRIC LOGIN */}
+
+          <button
+            type="button"
+            onClick={biometricLogin}
+            disabled={busy}
+            style={{
+              width: "100%",
+              marginTop: 10,
+              padding: 12,
+              border: "1px solid #ddd",
+              borderRadius: 10,
+              background: "#fff",
+              color: COLORS.accent,
+              fontWeight: 800,
+              cursor: busy
+                ? "wait"
+                : "pointer",
+            }}
+          >
+            🔐 Login with Fingerprint / Face
+          </button>
         </form>
 
         <div
@@ -389,8 +558,8 @@ function LoginScreen() {
             textAlign: "center",
           }}
         >
-          Access is controlled by your Supabase
-          staff account.
+          Access is controlled by your
+          Supabase staff account.
         </div>
       </div>
     </div>
